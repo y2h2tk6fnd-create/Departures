@@ -75,7 +75,10 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
   background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
   list-style: none; margin: 0; padding: 4px; box-shadow: 0 8px 24px rgb(0 0 0 / .15);
 }
-.suggest li { padding: 9px 10px; border-radius: 6px; cursor: pointer; }
+.suggest li { padding: 9px 10px; border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.suggest li .kind { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.suggest li .kind.train { color: var(--accent); font-weight: 600; }
+.empty .fix { margin-top: 12px; border: 1px solid var(--accent); color: var(--accent); background: none; border-radius: 8px; padding: 6px 12px; font-weight: 600; }
 .suggest li[aria-selected="true"], .suggest li:hover { background: var(--bg); }
 
 /* Pinned stations */
@@ -295,6 +298,14 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
         const s = state.stations.find((x) => x.id === state.current);
         if (s && s.name !== data.station.name) { s.name = data.station.name; save(); }
       }
+      const saved = state.stations.find((x) => x.id === state.current);
+      if (saved && !saved.icon && !state.journeys.length) {
+        try {
+          const loc = await getJSON("/locations", [["query", saved.name], ["type", "station"]]);
+          const hit = (loc.stations || []).find((x) => String(x.id) === saved.id);
+          if (hit && hit.icon) { saved.icon = hit.icon; save(); }
+        } catch {}
+      }
       state.loadedAt = Date.now();
       state.error = null;
     } catch (e) {
@@ -346,7 +357,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
     $("station-name").textContent = s ? s.name : "–";
     if (state.error) { list.append(el("div", "error", state.error)); }
     if (!state.journeys.length) {
-      if (!state.error) list.append(el("div", "empty", state.loading ? "Loading departures…" : (s ? "No departures found for these transport types." : "Search for a station to see its departures.")));
+      if (!state.error) list.append(state.loading ? el("div", "empty", "Loading departures…") : s ? emptyBoard(s) : el("div", "empty", "Search for a station to see its departures."));
       $("more").hidden = true;
       return;
     }
@@ -371,6 +382,22 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
       list.append(r);
     }
     $("more").hidden = state.limit >= 120;
+  }
+
+  const KIND = { train: "Train station", tram: "Tram stop", bus: "Bus stop", ship: "Boat landing", cableway: "Cableway station", funicular: "Funicular" };
+  function emptyBoard(s) {
+    const box = el("div", "empty");
+    const shown = state.modes.map((m) => ({ train: "trains", tram: "trams", bus: "buses", ship: "boats", cableway: "cableways" }[m])).join(", ");
+    if (s.icon && s.icon !== "train" && !state.modes.includes(s.icon) && KIND[s.icon]) {
+      box.append(el("div", "", `${s.name} is a ${KIND[s.icon].toLowerCase()}, so no ${shown} leave from here. For trains, search for the train station instead (for example “Genève” for Cornavin).`));
+      const mode = s.icon === "funicular" ? "cableway" : s.icon;
+      const b = el("button", "fix", "Show " + KIND[s.icon].split(" ")[0].toLowerCase() + " departures here");
+      b.addEventListener("click", () => { state.modes = [...state.modes, mode]; save(); loadBoard(); });
+      box.append(b);
+    } else {
+      box.append(el("div", "", `No ${shown} leave from ${s.name} in the next few hours. Try turning on other transport types above.`));
+    }
+    return box;
   }
 
   function renderWatch() {
@@ -413,7 +440,9 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
 
   // ---------- Actions ----------
   function selectStation(s) {
-    if (!state.stations.some((x) => x.id === s.id)) state.stations.push({ id: s.id, name: s.name });
+    const known = state.stations.find((x) => x.id === s.id);
+    if (!known) state.stations.push({ id: s.id, name: s.name, icon: s.icon });
+    else if (s.icon && !known.icon) known.icon = s.icon;
     state.current = s.id; state.journeys = []; state.error = null; state.limit = 30;
     save(); loadBoard();
   }
@@ -444,12 +473,20 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
   $("more").addEventListener("click", () => { state.limit = Math.min(120, state.limit + 30); loadBoard({ quiet: true }); });
 
   // ---------- Station search ----------
+  const ALIASES = [
+    { match: /cornavin/i, id: "8501008", name: "Genève", alias: "Cornavin" },
+    { match: /lausanne\s*gare|gare\s*de\s*lausanne/i, id: "8501120", name: "Lausanne", alias: "main station" },
+    { match: /bern\s*(hb|hbf|bahnhof)/i, id: "8507000", name: "Bern", alias: "main station" },
+    { match: /basel\s*(sbb|hb|hbf|bahnhof)/i, id: "8500010", name: "Basel SBB", alias: "main station" }
+  ];
   const input = $("search"), sug = $("suggest");
   let results = [], active = -1, searchTimer = 0, searchSeq = 0;
   function showSuggest() {
     sug.replaceChildren();
     results.forEach((r, i) => {
-      const li = el("li", "", r.name); li.setAttribute("role", "option"); li.id = "sug-" + i;
+      const li = el("li"); li.setAttribute("role", "option"); li.id = "sug-" + i;
+      li.append(el("span", "", r.name + (r.alias ? " (" + r.alias + ")" : "")));
+      if (KIND[r.icon]) li.append(el("span", "kind " + r.icon, KIND[r.icon]));
       li.setAttribute("aria-selected", String(i === active));
       li.addEventListener("mousedown", (e) => { e.preventDefault(); choose(r); });
       sug.append(li);
@@ -467,7 +504,13 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
       try {
         const data = await getJSON("/locations", [["query", q], ["type", "station"]]);
         if (seq !== searchSeq) return;
-        results = (data.stations || []).filter((s) => s.id && s.name).slice(0, 8).map((s) => ({ id: String(s.id), name: s.name }));
+        let found = (data.stations || []).filter((s) => s.id && s.name).map((s) => ({ id: String(s.id), name: s.name, icon: s.icon || "" }));
+        // Main stations whose everyday name differs from the timetable name.
+        for (const a of ALIASES) if (a.match.test(q) && !found.some((s) => s.id === a.id)) found.unshift({ id: a.id, name: a.name, icon: "train" });
+        for (const s of found) { const a = ALIASES.find((a) => a.id === s.id && a.match.test(q)); if (a) s.alias = a.alias; }
+        // Train stations first when trains are shown, keeping the service's order otherwise.
+        if (state.modes.includes("train")) found = found.filter((s) => s.icon === "train").concat(found.filter((s) => s.icon !== "train"));
+        results = found.slice(0, 8);
         active = results.length ? 0 : -1; showSuggest();
       } catch { results = []; showSuggest(); }
     }, 250);
