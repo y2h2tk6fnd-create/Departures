@@ -10,20 +10,23 @@ Open the link above in Safari, tap **Share → Add to Home Screen**, then **Add*
 
 ## Using it
 
-- **Find a station** in the search box. It's added as a tab, and tabs are remembered in this browser. Remove a tab with ×.
-- **Train / Tram / Bus / Boat / Cableway** choose what the board shows. It starts with trains only.
-- **Only trains towards…** keeps the departures whose destination or stops along the way match what you type (e.g. `Genève` or `Olten`).
-- **Tap a departure to watch it.** A card at the top counts down to the real departure time, including any delay, and shows the platform. The browser tab title shows the countdown too, so you can keep an eye on it from another tab. Tap the departure again, or **Stop watching**, to clear it.
+- **From** is the station you leave from. On its own, it shows that station's departure board.
+- **To** is optional. Fill it in to see the next trains from one station to the other, with arrival time, journey time and any changes. Clear it with × to go back to the departure board, or swap the two with ⇅.
+- Both fields suggest stations as you type. Tap a field to see your **four most-used stations**.
+- **Train / Tram / Bus / Boat / Cableway** choose what's shown. It starts with trains only.
+- **Tap a train to watch it.** A card at the top counts down to the real departure time, including any delay, and shows the platform. The browser tab title shows the countdown too. Tap the train again, or **Stop watching**, to clear it.
 
 On the board:
 
 | What you see | Meaning |
 |---|---|
+| Red **12′05″** instead of the time | Leaves in 12 minutes 5 seconds (shown for trains leaving within 20 minutes) |
 | **+3 min** in red under the time | The train is running 3 minutes late |
-| Platform on a yellow background | The platform has changed |
-| Filled line badge (IC 1, IR 15, RE…) | Long-distance or regional express train |
+| Platform box in red, "New pl." | The platform has changed |
+| Red line badge (IC 1, IR 15, RE…) | Long-distance or regional express train |
 | Outlined line badge (S 1…) | S-Bahn, tram, bus and other local services |
-| Minutes in green | Leaves within 5 minutes |
+| White row with blue and red stripes | Léman Express |
+| White row with a red end and dark band | RE 33 |
 
 All times are Swiss time, wherever you open the page.
 

@@ -67,33 +67,36 @@ header { display: flex; align-items: baseline; justify-content: space-between; g
 h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; text-wrap: balance; }
 .updated { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 
-/* Search */
-.search { position: relative; }
-.search input {
-  width: 100%; padding: 12px 14px; border-radius: 10px;
-  border: 1px solid var(--line); background: var(--surface); font-size: 16px;
+/* Trip search: From and To */
+.trip {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: stretch;
 }
+.fields { min-width: 0; }
+.field { position: relative; display: flex; align-items: center; gap: 10px; padding: 4px 12px 4px 14px; }
+.field + .field { border-top: 1px solid var(--line); }
+.field .tag { width: 40px; flex: none; font: 600 11px/1 var(--font-body); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.field .dot { width: 10px; height: 10px; flex: none; border-radius: 50%; background: var(--fg); }
+.field.to .dot { background: var(--surface); border: 2.5px solid var(--accent); }
+.field input { flex: 1; min-width: 0; border: 0; background: none; font-size: 17px; font-weight: 500; padding: 11px 0; outline: none; }
+.field input::placeholder { color: var(--muted); font-weight: 400; }
+.field .clear { border: 0; background: none; color: var(--muted); font-size: 20px; line-height: 1; padding: 4px 6px; border-radius: 6px; }
+.swap {
+  border: 0; border-left: 1px solid var(--line); background: none; width: 52px;
+  font-size: 20px; color: var(--fg); border-radius: 0 14px 14px 0;
+}
+.swap:disabled { color: var(--line); cursor: default; }
 .suggest {
-  position: absolute; z-index: 5; left: 0; right: 0; top: calc(100% + 4px);
-  background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
-  list-style: none; margin: 0; padding: 4px; box-shadow: 0 8px 24px rgb(0 0 0 / .15);
+  position: absolute; z-index: 5; left: 0; right: 0; top: calc(100% + 2px);
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+  list-style: none; margin: 0; padding: 4px; box-shadow: 0 10px 28px rgb(0 0 0 / .18);
 }
-.suggest li { padding: 9px 10px; border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.suggest .head { padding: 8px 10px 4px; font: 600 11px/1 var(--font-body); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); cursor: default; }
+.suggest li[role="option"] { padding: 10px; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
 .suggest li .kind { color: var(--muted); font-size: 12px; white-space: nowrap; }
 .suggest li .kind.train { color: var(--accent); font-weight: 600; }
+.suggest li[aria-selected="true"], .suggest li[role="option"]:hover { background: var(--bg); }
 .empty .fix { margin-top: 12px; border: 1px solid var(--accent); color: var(--accent); background: none; border-radius: 8px; padding: 6px 12px; font-weight: 600; }
-.suggest li[aria-selected="true"], .suggest li:hover { background: var(--bg); }
-
-/* Pinned stations */
-.tabs { display: flex; gap: 8px; flex-wrap: wrap; }
-.tab {
-  display: inline-flex; align-items: center; gap: 6px;
-  border: 1px solid var(--line); background: var(--surface);
-  border-radius: 999px; padding: 6px 6px 6px 14px; font-weight: 500;
-}
-.tab[aria-current="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
-.tab .x { border: 0; background: none; padding: 2px 7px; border-radius: 999px; opacity: .6; line-height: 1; }
-.tab .x:hover { opacity: 1; background: rgb(127 127 127 / .2); }
 
 /* Controls */
 .controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
@@ -103,8 +106,6 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
   padding: 5px 11px; font-size: 13px; font-weight: 500;
 }
 .chip[aria-pressed="true"] { border-color: var(--fg); color: var(--surface); background: var(--fg); }
-.towards { flex: 1 1 200px; min-width: 0; }
-.towards input { width: 100%; padding: 7px 11px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); font-size: 14px; }
 
 /* Watched departure */
 .watch {
@@ -128,16 +129,19 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
 .board-head h2 { margin: 0; font: 700 22px/1.15 var(--font-display); }
 .board-head .clock { font: 600 20px/1 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--board-muted); }
 .cols, .dep {
-  display: grid; grid-template-columns: 64px 82px minmax(0, 1fr) 56px 56px; gap: 0 12px; align-items: center;
-  padding: 10px 18px;
+  display: grid; grid-template-columns: 92px 82px minmax(0, 1fr) 62px; gap: 0 12px; align-items: center;
+  padding: 11px 18px;
 }
 .cols { font: 600 11px/1 var(--font-body); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); padding-block: 9px; }
 .cols .r, .dep .r { text-align: right; }
-.dep { border-bottom: 1px solid var(--line); cursor: pointer; }
+.dep { border-bottom: 1px solid var(--line); cursor: pointer; position: relative; }
 .dep:last-child { border-bottom: 0; }
 .dep:hover { background: color-mix(in srgb, var(--accent) 5%, var(--surface)); }
 .dep.watched { box-shadow: inset 4px 0 0 var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
-.time { font: 600 17px/1.1 var(--font-mono); font-variant-numeric: tabular-nums; }
+.time-c { display: grid; gap: 2px; }
+.time { font: 600 18px/1.1 var(--font-mono); font-variant-numeric: tabular-nums; }
+.time.countdown { color: var(--accent); font-weight: 700; }
+.time-c small { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .delay { display: block; font: 600 12px/1.3 var(--font-body); color: var(--late); }
 .badge {
   display: inline-block; font: 700 13px/1 var(--font-display); letter-spacing: .02em;
@@ -146,11 +150,41 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
 .badge.long { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
 .dest { min-width: 0; }
 .dest b { display: block; font-weight: 600; font-size: 16px; overflow-wrap: anywhere; }
-.dest .via { display: block; color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.plat { font: 600 17px/1 var(--font-mono); text-align: right; }
-.plat.changed { justify-self: end; font-weight: 700; color: var(--warn-fg); background: var(--warn-bg); border-radius: 5px; padding: 4px 5px; }
-.mins { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--muted); }
-.mins.soon { color: var(--ok); font-weight: 700; }
+.dest .via { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; color: var(--muted); font-size: 13px; overflow: hidden; overflow-wrap: anywhere; }
+.dep.liv-lex .dest { padding-right: 46px; }
+.plat {
+  justify-self: end; align-self: center; display: grid; justify-items: center; min-width: 50px;
+  border: 2px solid var(--fg); border-radius: 8px; padding: 3px 6px 4px; background: var(--surface); color: var(--fg); position: relative; z-index: 1;
+}
+.plat small { font: 600 9.5px/1.2 var(--font-body); letter-spacing: .08em; text-transform: uppercase; opacity: .75; }
+.plat b { font: 700 20px/1.05 var(--font-mono); }
+.plat.changed { background: var(--warn-bg); color: var(--warn-fg); border-color: var(--warn-bg); }
+.plat.unknown b { opacity: .45; }
+
+/* Livery rows: fixed colours, the same in light and dark mode, because a livery doesn't change. */
+.dep.liv { background: #ffffff; color: #111111; border-bottom-color: #d9d9d9; overflow: hidden; }
+.dep.liv .via, .dep.liv .time-c small { color: #555555; }
+.dep.liv .type { color: #111111; }
+.dep.liv .time.countdown { color: #d8232a; }
+.dep.liv .delay { color: #d8232a; }
+.dep.liv .plat { background: #ffffff; color: #111111; border-color: #111111; }
+.dep.liv .plat.changed { background: #d8232a; color: #ffffff; border-color: #d8232a; }
+.dep.liv:hover { background: #fafafa; }
+.dep.liv.watched { background: #fff6f6; }
+/* Léman Express: white body with a sweep of blue and red. */
+.dep.liv-lex::before {
+  content: ""; position: absolute; top: -10px; bottom: -10px; right: 34px; width: 74px; transform: skewX(-24deg);
+  background: linear-gradient(90deg, #1f4e9c 0 32%, #ffffff 32% 40%, #e30613 40% 72%, #ffffff 72% 78%, #1f4e9c 78%);
+}
+.dep.liv-lex::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: linear-gradient(90deg, #1f4e9c, #e30613); }
+.dep.liv-lex .badge { background: #1f4e9c; color: #ffffff; border-color: #1f4e9c; }
+/* RE 33 (SBB KISS double-deckers): white body, red cab, dark window band, red doors. */
+.dep.liv-re33::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 9px; background: #d8232a; border-radius: 0 6px 6px 0; }
+.dep.liv-re33::after {
+  content: ""; position: absolute; left: 9px; right: 0; bottom: 0; height: 6px;
+  background: repeating-linear-gradient(90deg, #2f2f2f 0 46px, #d8232a 46px 54px);
+}
+.dep.liv-re33 .badge { background: #d8232a; color: #ffffff; border-color: #d8232a; }
 .empty, .error { padding: 28px 18px; color: var(--muted); text-align: center; }
 .error { color: var(--late); background: var(--late-bg); }
 .more { width: 100%; border: 0; border-top: 1px solid var(--line); background: none; padding: 12px; color: var(--accent); font-weight: 600; }
@@ -189,12 +223,14 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
 
 @media (max-width: 560px) {
   .cols { display: none; }
-  .dep { grid-template-columns: 56px minmax(0, 1fr) 46px; grid-template-areas: "time line plat" "time dest mins"; row-gap: 4px; padding: 10px 14px; }
+  .dep { grid-template-columns: 74px minmax(0, 1fr) 56px; grid-template-areas: "time line plat" "time dest plat"; gap: 4px 10px; padding: 11px 14px; }
   .dep .time-c { grid-area: time; align-self: start; }
   .dep .line-c { grid-area: line; }
   .dep .dest { grid-area: dest; }
   .dep .plat { grid-area: plat; }
-  .dep .mins { grid-area: mins; }
+  .dep.liv-lex::before { right: 22px; width: 62px; }
+  .dep.liv-lex .dest { padding-right: 30px; }
+  .dep.liv-re33 { padding-left: 20px; }
   .watch .count { font-size: 32px; }
 }
 @media (prefers-reduced-motion: no-preference) {
@@ -228,13 +264,26 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
     <span class="status" id="key-status" aria-live="polite"></span>
   </section>
 
-  <div class="search">
-    <input id="search" type="search" placeholder="Find a station, e.g. Bern, Zürich HB, Lausanne" autocomplete="off"
-           role="combobox" aria-expanded="false" aria-controls="suggest" aria-label="Find a station">
-    <ul id="suggest" class="suggest" role="listbox" hidden></ul>
-  </div>
-
-  <nav class="tabs" id="tabs" aria-label="Saved stations"></nav>
+  <section class="trip" aria-label="Search">
+    <div class="fields">
+      <div class="field from">
+        <span class="dot" aria-hidden="true"></span>
+        <label class="tag" for="from-in">From</label>
+        <input id="from-in" type="text" placeholder="Departure station" autocomplete="off" spellcheck="false"
+               role="combobox" aria-expanded="false" aria-controls="from-list" aria-autocomplete="list">
+        <ul id="from-list" class="suggest" role="listbox" hidden></ul>
+      </div>
+      <div class="field to">
+        <span class="dot" aria-hidden="true"></span>
+        <label class="tag" for="to-in">To</label>
+        <input id="to-in" type="text" placeholder="Arrival station (optional)" autocomplete="off" spellcheck="false"
+               role="combobox" aria-expanded="false" aria-controls="to-list" aria-autocomplete="list">
+        <button class="clear" id="to-clear" aria-label="Clear arrival station" hidden>×</button>
+        <ul id="to-list" class="suggest" role="listbox" hidden></ul>
+      </div>
+    </div>
+    <button class="swap" id="swap" aria-label="Swap departure and arrival">⇅</button>
+  </section>
 
   <div class="controls">
     <div class="chips" id="modes" role="group" aria-label="Transport types">
@@ -244,7 +293,6 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
       <button class="chip" data-mode="ship">Boat</button>
       <button class="chip" data-mode="cableway">Cableway</button>
     </div>
-    <label class="towards"><input id="towards" type="search" placeholder="Only trains towards… (e.g. Genève)" aria-label="Only show departures towards a stop"></label>
   </div>
 
   <section class="watch" id="watch" hidden aria-live="polite"></section>
@@ -254,15 +302,15 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
       <h2 id="station-name">–</h2>
       <span class="clock" id="clock">--:--</span>
     </div>
-    <div class="cols" aria-hidden="true">
-      <span>Dep.</span><span>Line</span><span>Destination</span><span class="r">Pl.</span><span class="r">In</span>
+    <div class="cols" aria-hidden="true" id="cols">
+      <span>Dep.</span><span>Line</span><span id="col-dest">Destination</span><span class="r">Platform</span>
     </div>
     <div id="list"><div class="empty">Search for a station to see its departures.</div></div>
     <button class="more" id="more" hidden>Show more departures</button>
   </section>
 
   <div class="toast" id="toast" role="status" hidden></div>
-  <p class="hint">Live data from transport.opendata.ch (SBB timetable and real-time delays), refreshed every 30 seconds. Tap a departure to watch it. Times shown are Swiss time. Train types come from SBB's train formation data (set up under Settings); photos from Wikimedia Commons.</p>
+  <p class="hint">Live data from transport.opendata.ch (SBB timetable and real-time delays), refreshed every 30 seconds. Enter only a departure station for its board, or both stations for trains between them. Trains leaving within 20 minutes count down to the second. Tap a train to watch it. Times shown are Swiss time. Train types come from SBB's train formation data (set up under Settings); photos from Wikimedia Commons.</p>
 </div>
 
 <script src="trains/photos.js"></script>
@@ -272,37 +320,47 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
   const API = "https://transport.opendata.ch/v1";
   const TT = window.TrainTypes;
   const REFRESH_MS = 30000;
+  const COUNTDOWN_S = 20 * 60;            // count down to the second below 20 minutes
   const $ = (id) => document.getElementById(id);
 
-  // ---------- Saved settings (this browser only) ----------
+  // ---------- Saved settings (this device only) ----------
   const store = {
     get(k, d) { try { const v = localStorage.getItem("sbbdep." + k); return v ? JSON.parse(v) : d; } catch { return d; } },
     set(k, v) { try { localStorage.setItem("sbbdep." + k, JSON.stringify(v)); } catch {} }
   };
+  // Earlier versions kept a list of station tabs; start "From" on the one that was open.
+  const oldStations = store.get("stations", [{ id: "8507000", name: "Bern" }, { id: "8503000", name: "Zürich HB" }]);
+  const oldCurrent = store.get("current", null);
   const state = {
-    stations: store.get("stations", [{ id: "8507000", name: "Bern" }, { id: "8503000", name: "Zürich HB" }]),
-    current: store.get("current", "8507000"),
+    from: store.get("from", null) || oldStations.find((x) => x.id === oldCurrent) || oldStations[0] || { id: "8507000", name: "Bern" },
+    to: store.get("to", null),
+    freq: store.get("freq", null),       // { id: {id, name, icon, n, t} }
     modes: store.get("modes", ["train"]),
-    towards: store.get("towards", ""),
-    watch: store.get("watch", null),   // {key, stationId, title, to, ts}
+    watch: store.get("watch", null),
     limit: 30,
     journeys: [],
     loadedAt: null,
     error: null,
     loading: false
   };
+  if (!state.freq) {
+    state.freq = {};
+    oldStations.forEach((x, i) => { state.freq[x.id] = { id: x.id, name: x.name, icon: x.icon || "", n: 0, t: -i }; });
+  }
   const save = () => {
-    store.set("stations", state.stations); store.set("current", state.current);
-    store.set("modes", state.modes); store.set("towards", state.towards); store.set("watch", state.watch);
+    store.set("from", state.from); store.set("to", state.to); store.set("freq", state.freq);
+    store.set("modes", state.modes); store.set("watch", state.watch);
   };
+  const isTrip = () => !!(state.to && state.from);
 
   // ---------- Time helpers (always Swiss time) ----------
   const fmtTime = new Intl.DateTimeFormat("de-CH", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Zurich" });
   const fmtClock = new Intl.DateTimeFormat("de-CH", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Europe/Zurich" });
+  const fmtDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Zurich" });
   const hhmm = (sec) => fmtTime.format(new Date(sec * 1000));
   const now = () => Date.now() / 1000;
 
-  // ---------- Journey normalisation ----------
+  // ---------- Normalising both kinds of result into one row shape ----------
   const tsOf = (iso, fallback) => {
     if (!iso) return fallback ?? null;
     // API gives "2026-11-12T10:02:00+0100"; add the colon so every browser parses it.
@@ -311,28 +369,62 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
   };
   const cleanPlat = (p) => (p == null ? "" : String(p).replace(/!$/, "").trim());
 
-  function normalise(j) {
-    const stop = j.stop || {};
-    const planned = stop.departureTimestamp ?? tsOf(stop.departure);
-    const delay = Number.isFinite(stop.delay) ? stop.delay : 0;
-    const progTs = tsOf(stop.prognosis && stop.prognosis.departure);
-    const expected = progTs ?? (planned != null ? planned + delay * 60 : null);
-    const plat = cleanPlat(stop.platform);
-    const progPlat = cleanPlat(stop.prognosis && stop.prognosis.platform);
+  function trainFields(j, planned) {
     const cat = j.category || "";
     const num = j.number && !/^\d{4,}$/.test(String(j.number)) ? String(j.number) : "";
-    const line = (cat + (num ? " " + num : "")).trim() || j.name || "?";
-    const via = (j.passList || []).slice(1, -1)
-      .map((p) => p.station && p.station.name).filter(Boolean);
     return {
-      key: [planned, j.category, j.number, j.to].join("|"),
-      planned, expected, delay: expected && planned ? Math.round((expected - planned) / 60) : delay,
-      platform: progPlat || plat, platformChanged: !!(progPlat && plat && progPlat !== plat),
-      line, longDistance: /^(IC|ICE|IR|EC|EN|RE|TGV|RJX?|NJ|PE|IRE|EXT)/.test(cat),
-      to: j.to || "", via, operator: j.operator || "",
+      cat, num,
+      line: (cat + (num ? " " + num : "")).trim() || j.name || "?",
+      longDistance: /^(IC|ICE|IR|EC|EN|RE|TGV|RJX?|NJ|PE|IRE|EXT)/.test(cat),
+      livery: /^L\d+$/i.test(num) || /^SL\d*$/i.test(cat) ? "lex" : (cat === "RE" && num === "33" ? "re33" : ""),
+      operator: j.operator || "",
       trainNo: /^\d+$/.test(String(j.name || "")) ? String(parseInt(j.name, 10)) : null,
       evu: TT ? TT.evuFor(j.operator) : null,
-      date: planned != null ? new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Zurich" }).format(new Date(planned * 1000)) : null
+      date: planned != null ? fmtDate.format(new Date(planned * 1000)) : null
+    };
+  }
+  function timing(stop, tsField, isoField) {
+    const planned = stop[tsField] ?? tsOf(stop[isoField]);
+    const delay = Number.isFinite(stop.delay) ? stop.delay : 0;
+    const progTs = tsOf(stop.prognosis && stop.prognosis[isoField]);
+    const expected = progTs ?? (planned != null ? planned + delay * 60 : null);
+    return { planned, expected, delay: expected && planned ? Math.round((expected - planned) / 60) : delay };
+  }
+  function platformOf(stop) {
+    const plat = cleanPlat(stop.platform), prog = cleanPlat(stop.prognosis && stop.prognosis.platform);
+    return { platform: prog || plat, platformChanged: !!(prog && plat && prog !== plat) };
+  }
+
+  function fromBoard(j) {
+    const stop = j.stop || {};
+    const t = timing(stop, "departureTimestamp", "departure");
+    return {
+      ...t, ...platformOf(stop), ...trainFields(j, t.planned),
+      key: [t.planned, j.category, j.number, j.to].join("|"),
+      to: j.to || "",
+      sub: (() => { const v = (j.passList || []).slice(1, -1).map((p) => p.station && p.station.name).filter(Boolean); return v.length ? "via " + v.slice(0, 4).join(", ") : ""; })()
+    };
+  }
+
+  function duration(d) {   // "00d02:27:00"
+    const m = /(\d+)d(\d+):(\d+)/.exec(d || ""); if (!m) return "";
+    const h = +m[1] * 24 + +m[2], min = +m[3];
+    return h ? `${h} h ${String(min).padStart(2, "0")}` : `${min} min`;
+  }
+  function fromConnection(c) {
+    const f = c.from || {}, a = c.to || {};
+    const t = timing(f, "departureTimestamp", "departure");
+    const legs = (c.sections || []).filter((s) => s.journey);
+    const first = legs[0] ? legs[0].journey : {};
+    const arr = timing(a, "arrivalTimestamp", "arrival");
+    const changes = legs.slice(1).map((s) => s.departure && s.departure.station && s.departure.station.name).filter(Boolean);
+    const arrText = `Arrives ${(a.station && a.station.name) || state.to.name} ${hhmm(arr.expected ?? arr.planned)}` + (arr.delay > 0 ? ` (+${arr.delay})` : "");
+    return {
+      ...t, ...platformOf(f), ...trainFields(first, t.planned),
+      key: ["c", t.planned, first.name || first.number, first.to].join("|"),
+      to: first.to || (a.station && a.station.name) || "",
+      sub: [arrText, duration(c.duration), changes.length ? (changes.length === 1 ? "1 change at " + changes[0] : changes.length + " changes") : "direct"].filter(Boolean).join(" · "),
+      more: legs.length > 1 ? "+" + (legs.length - 1) : ""
     };
   }
 
@@ -345,65 +437,74 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
     return res.json();
   }
 
+  let loadSeq = 0;
   async function loadBoard({ quiet } = {}) {
-    if (!state.current) return;
+    if (!state.from) return;
+    const seq = ++loadSeq;
     state.loading = true;
     if (!quiet) render();
-    const params = [["id", state.current], ["limit", String(state.limit)]];
-    for (const m of state.modes) params.push(["transportations[]", m]);
     try {
-      const data = await getJSON("/stationboard", params);
-      state.journeys = (data.stationboard || []).map(normalise);
-      if (data.station && data.station.name) {
-        const s = state.stations.find((x) => x.id === state.current);
-        if (s && s.name !== data.station.name) { s.name = data.station.name; save(); }
+      let rows;
+      if (isTrip()) {
+        const params = [["from", state.from.id], ["to", state.to.id], ["limit", String(state.limit)]];
+        for (const m of state.modes) params.push(["transportations[]", m]);
+        const data = await getJSON("/connections", params);
+        rows = (data.connections || []).map(fromConnection);
+      } else {
+        const params = [["id", state.from.id], ["limit", String(state.limit)]];
+        for (const m of state.modes) params.push(["transportations[]", m]);
+        const data = await getJSON("/stationboard", params);
+        rows = (data.stationboard || []).map(fromBoard);
+        if (data.station && data.station.name && data.station.name !== state.from.name) { state.from.name = data.station.name; save(); syncInputs(); }
+        if (!rows.length && !state.from.icon) {
+          try {
+            const loc = await getJSON("/locations", [["query", state.from.name], ["type", "station"]]);
+            const hit = (loc.stations || []).find((x) => String(x.id) === state.from.id);
+            if (hit && hit.icon) { state.from.icon = hit.icon; save(); }
+          } catch {}
+        }
       }
-      const saved = state.stations.find((x) => x.id === state.current);
-      if (saved && !saved.icon && !state.journeys.length) {
-        try {
-          const loc = await getJSON("/locations", [["query", saved.name], ["type", "station"]]);
-          const hit = (loc.stations || []).find((x) => String(x.id) === saved.id);
-          if (hit && hit.icon) { saved.icon = hit.icon; save(); }
-        } catch {}
-      }
+      if (seq !== loadSeq) return;           // a newer search replaced this one
+      state.journeys = rows;
       state.loadedAt = Date.now();
       state.error = null;
     } catch (e) {
+      if (seq !== loadSeq) return;
       state.error = e instanceof TypeError ? "Can't reach the timetable service. Check your internet connection." : e.message;
     } finally {
-      state.loading = false;
-      render();
+      if (seq === loadSeq) { state.loading = false; render(); }
     }
   }
 
   // ---------- Rendering ----------
   const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
 
-  function minutesUntil(ts) { return Math.floor((ts - now()) / 60); }
   function untilText(ts) {
-    const m = minutesUntil(ts);
+    const m = Math.floor((ts - now()) / 60);
     if (m <= 0) return "now";
     if (m < 60) return m + "′";
     return Math.floor(m / 60) + "h" + String(m % 60).padStart(2, "0");
   }
-
-  function filtered() {
-    const q = state.towards.trim().toLowerCase();
-    const cutoff = now() - 60;
-    return state.journeys.filter((j) => (j.expected ?? j.planned) >= cutoff &&
-      (!q || j.to.toLowerCase().includes(q) || j.via.some((v) => v.toLowerCase().includes(q))));
+  function countdown(ts) {        // "12:05" style, minutes and seconds
+    const s = Math.max(0, Math.round(ts - now()));
+    return s === 0 ? "now" : Math.floor(s / 60) + "′" + String(s % 60).padStart(2, "0") + "″";
   }
 
-  function renderTabs() {
-    const tabs = $("tabs"); tabs.replaceChildren();
-    for (const s of state.stations) {
-      const t = el("span", "tab"); t.setAttribute("aria-current", String(s.id === state.current));
-      const b = el("button", "", s.name); b.style.cssText = "border:0;background:none;padding:0;font-weight:inherit";
-      b.addEventListener("click", () => selectStation(s));
-      const x = el("button", "x", "×"); x.setAttribute("aria-label", "Remove " + s.name);
-      x.addEventListener("click", () => removeStation(s.id));
-      t.append(b, x); tabs.append(t);
+  // Left column: a live countdown under 20 minutes, the departure time otherwise.
+  const timeCells = [];
+  function fillTime(cell, j) {
+    const left = (j.expected ?? j.planned) - now();
+    cell.replaceChildren();
+    if (left < COUNTDOWN_S) {
+      cell.append(el("span", "time countdown", countdown(j.expected ?? j.planned)));
+      cell.append(el("small", "", "dep " + hhmm(j.planned)));
+      cell.setAttribute("aria-label", left <= 0 ? "departing now" : `departs in ${Math.floor(left / 60)} minutes ${Math.round(left % 60)} seconds`);
+    } else {
+      cell.append(el("span", "time", hhmm(j.planned)));
+      cell.append(el("small", "", "in " + untilText(j.expected ?? j.planned)));
+      cell.removeAttribute("aria-label");
     }
+    if (j.delay > 0) cell.append(el("span", "delay", "+" + j.delay + " min"));
   }
 
   function renderModes() {
@@ -412,38 +513,46 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
   }
 
   function renderList() {
-    const list = $("list"); list.replaceChildren();
-    const s = state.stations.find((x) => x.id === state.current);
-    $("station-name").textContent = s ? s.name : "–";
-    if (state.error) { list.append(el("div", "error", state.error)); }
-    if (!state.journeys.length) {
-      if (!state.error) list.append(state.loading ? el("div", "empty", "Loading departures…") : s ? emptyBoard(s) : el("div", "empty", "Search for a station to see its departures."));
+    const list = $("list"); list.replaceChildren(); timeCells.length = 0;
+    const trip = isTrip();
+    $("station-name").textContent = state.from ? state.from.name + (trip ? " → " + state.to.name : "") : "–";
+    $("col-dest").textContent = trip ? "Train and arrival" : "Destination";
+    if (state.error) list.append(el("div", "error", state.error));
+    const cutoff = now() - 60;
+    const rows = state.journeys.filter((j) => (j.expected ?? j.planned) >= cutoff);
+    if (!rows.length) {
+      if (!state.error) {
+        if (state.loading) list.append(el("div", "empty", trip ? "Looking for trains…" : "Loading departures…"));
+        else if (trip) list.append(el("div", "empty", `No connections found from ${state.from.name} to ${state.to.name} for these transport types.`));
+        else list.append(state.from ? emptyBoard(state.from) : el("div", "empty", "Enter a departure station."));
+      }
       $("more").hidden = true;
       return;
     }
-    const rows = filtered();
-    if (!rows.length) list.append(el("div", "empty", "No departures towards “" + state.towards + "” in the next " + state.journeys.length + " departures."));
     for (const j of rows) {
-      const r = el("div", "dep" + (state.watch && state.watch.key === j.key ? " watched" : ""));
+      const cls = ["dep"];
+      if (j.livery) cls.push("liv", "liv-" + j.livery);
+      if (state.watch && state.watch.key === j.key) cls.push("watched");
+      const r = el("div", cls.join(" "));
       r.tabIndex = 0; r.setAttribute("role", "button");
-      r.setAttribute("aria-label", `${j.line} to ${j.to}, ${hhmm(j.planned)}${j.delay > 0 ? ", " + j.delay + " minutes late" : ""}, platform ${j.platform || "unknown"}. Watch this departure.`);
-      const tc = el("span", "time-c"); tc.append(el("span", "time", hhmm(j.planned)));
-      if (j.delay > 0) tc.append(el("span", "delay", "+" + j.delay + " min"));
-      const lc = el("span", "line-c"); lc.append(el("span", "badge" + (j.longDistance ? " long" : ""), j.line));
+      r.setAttribute("aria-label", `${j.line} to ${j.to}, ${hhmm(j.planned)}${j.delay > 0 ? ", " + j.delay + " minutes late" : ""}, platform ${j.platform || "unknown"}. Watch this train.`);
+      const tc = el("span", "time-c"); fillTime(tc, j); timeCells.push([tc, j]);
+      const lc = el("span", "line-c"); lc.append(el("span", "badge" + (j.longDistance ? " long" : ""), j.line + (j.more ? " " + j.more : "")));
       const d = el("span", "dest"); d.append(el("b", "", j.to));
-      if (j.via.length) d.append(el("span", "via", "via " + j.via.slice(0, 4).join(", ")));
+      if (j.sub) d.append(el("span", "via", j.sub));
       const tl = typeLabel(j, true);
       if (tl) d.append(tl);
-      const p = el("span", "plat" + (j.platformChanged ? " changed" : ""), j.platform || "–");
+      const p = el("span", "plat" + (j.platformChanged ? " changed" : "") + (j.platform ? "" : " unknown"));
+      p.append(el("small", "", j.platformChanged ? "New pl." : "Platform"), el("b", "", j.platform || "–"));
       if (j.platformChanged) p.title = "Platform changed";
-      const m = el("span", "mins" + (minutesUntil(j.expected) <= 5 ? " soon" : ""), untilText(j.expected));
-      r.append(tc, lc, d, p, m);
+      r.append(tc, lc, d, p);
       const pick = () => toggleWatch(j);
       r.addEventListener("click", pick);
       r.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } });
       list.append(r);
     }
-    $("more").hidden = state.limit >= 120;
+    $("more").textContent = trip ? "Show later trains" : "Show more departures";
+    $("more").hidden = trip ? state.limit >= 16 : state.limit >= 120;
   }
 
   const KIND = { train: "Train station", tram: "Tram stop", bus: "Bus stop", ship: "Boat landing", cableway: "Cableway station", funicular: "Funicular" };
@@ -502,14 +611,17 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
     return box;
   }
 
+  let watchCount = null;
+  function watchCountText(ts) { return ts - now() < COUNTDOWN_S ? countdown(ts) : untilText(ts); }
   function renderWatch() {
     const box = $("watch");
     const w = state.watch;
+    watchCount = null;
     if (!w) { box.hidden = true; document.title = "Departure Board"; return; }
-    const live = w.stationId === state.current ? state.journeys.find((j) => j.key === w.key) : null;
+    const live = state.journeys.find((j) => j.key === w.key);
     const expected = live ? live.expected : w.expected;
     if (expected < now() - 120) { state.watch = null; save(); box.hidden = true; document.title = "Departure Board"; return; }
-    if (live) { Object.assign(w, { expected: live.expected, delay: live.delay, platform: live.platform }); save(); }
+    if (live) { Object.assign(w, { expected: live.expected, delay: live.delay, platform: live.platform, sub: live.sub }); save(); }
     box.replaceChildren();
     box.append(el("span", "label", "Watching"));
     box.append(el("span", "what", `${w.line} to ${w.to}`));
@@ -517,9 +629,12 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
     det.append(`${hhmm(w.planned)} from ${w.stationName} · platform ${w.platform || "–"}`);
     if (w.delay > 0) { det.append(" · "); det.append(el("span", "late", "+" + w.delay + " min late")); }
     else if (live) det.append(" · on time");
+    if (w.trip && w.sub) det.append(el("br"), w.sub);
     box.append(det);
-    const c = el("span", "count", untilText(expected));
-    c.append(el("small", "", "leaves " + hhmm(expected)));
+    const c = el("span", "count");
+    const num = el("span", "", watchCountText(expected));
+    c.append(num, el("small", "", "leaves " + hhmm(expected)));
+    watchCount = [num, expected];
     box.append(c);
     const tb = trainBlock(w);
     if (tb) box.append(tb);
@@ -527,7 +642,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
     stop.addEventListener("click", () => { state.watch = null; save(); render(); });
     box.append(stop);
     box.hidden = false;
-    document.title = `${untilText(expected)} · ${w.line} ${w.to}`;
+    document.title = `${watchCountText(expected)} · ${w.line} ${w.to}`;
   }
 
   function renderUpdated() {
@@ -540,29 +655,43 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
     $("clock").textContent = fmtClock.format(new Date());
   }
 
-  function render() { renderTabs(); renderModes(); renderList(); renderWatch(); renderUpdated(); }
+  // Every second: countdowns, clock and tab title, without rebuilding the list.
+  function tick() {
+    renderUpdated();
+    for (const [cell, j] of timeCells) fillTime(cell, j);
+    if (watchCount) {
+      watchCount[0].textContent = watchCountText(watchCount[1]);
+      if (state.watch) document.title = `${watchCountText(watchCount[1])} · ${state.watch.line} ${state.watch.to}`;
+    }
+  }
+
+  function render() { renderModes(); renderList(); renderWatch(); renderUpdated(); syncInputs(); }
 
   // ---------- Actions ----------
-  function selectStation(s) {
-    const known = state.stations.find((x) => x.id === s.id);
-    if (!known) state.stations.push({ id: s.id, name: s.name, icon: s.icon });
-    else if (s.icon && !known.icon) known.icon = s.icon;
-    state.current = s.id; state.journeys = []; state.error = null; state.limit = 30;
-    save(); loadBoard();
+  function bump(s) {
+    const f = state.freq[s.id] || { id: s.id, name: s.name, icon: s.icon || "", n: 0, t: 0 };
+    f.n += 1; f.t = Date.now(); f.name = s.name; if (s.icon) f.icon = s.icon;
+    state.freq[s.id] = f;
   }
-  function removeStation(id) {
-    state.stations = state.stations.filter((s) => s.id !== id);
-    if (state.current === id) { state.current = state.stations[0] ? state.stations[0].id : null; state.journeys = []; }
-    save(); render(); if (state.current) loadBoard();
+  function setFrom(s) {
+    state.from = { id: s.id, name: s.name, icon: s.icon || "" };
+    if (state.to && state.to.id === s.id) state.to = null;
+    bump(s); newSearch();
+  }
+  function setTo(s) {
+    if (state.from && state.from.id === s.id) { toast("Pick a different station from the departure station."); syncInputs(); return; }
+    state.to = { id: s.id, name: s.name, icon: s.icon || "" };
+    bump(s); newSearch();
+  }
+  function newSearch() {
+    state.journeys = []; state.error = null; state.limit = isTrip() ? 6 : 30;
+    save(); loadBoard();
   }
   function toggleWatch(j) {
     if (state.watch && state.watch.key === j.key) state.watch = null;
-    else {
-      const s = state.stations.find((x) => x.id === state.current);
-      state.watch = { key: j.key, stationId: state.current, stationName: s ? s.name : "", line: j.line, to: j.to,
+    else state.watch = { key: j.key, stationName: state.from ? state.from.name : "", line: j.line, to: j.to,
         planned: j.planned, expected: j.expected, delay: j.delay, platform: j.platform,
-        trainNo: j.trainNo, evu: j.evu, date: j.date };
-    }
+        trainNo: j.trainNo, evu: j.evu, date: j.date, trip: isTrip(), sub: j.sub };
     save(); render();
   }
 
@@ -573,69 +702,96 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
     if (!state.modes.length) state.modes = [m];
     save(); loadBoard();
   });
-  $("towards").value = state.towards;
-  $("towards").addEventListener("input", (e) => { state.towards = e.target.value; save(); renderList(); });
-  $("more").addEventListener("click", () => { state.limit = Math.min(120, state.limit + 30); loadBoard({ quiet: true }); });
+  $("more").addEventListener("click", () => {
+    state.limit = isTrip() ? Math.min(16, state.limit + 4) : Math.min(120, state.limit + 30);
+    loadBoard({ quiet: true });
+  });
+  $("swap").addEventListener("click", () => {
+    if (!isTrip()) return;
+    [state.from, state.to] = [state.to, state.from];
+    newSearch();
+  });
+  $("to-clear").addEventListener("click", () => { state.to = null; newSearch(); $("to-in").value = ""; });
 
-  // ---------- Station search ----------
+  // ---------- Station fields ----------
   const ALIASES = [
     { match: /cornavin/i, id: "8501008", name: "Genève", alias: "Cornavin" },
     { match: /lausanne\s*gare|gare\s*de\s*lausanne/i, id: "8501120", name: "Lausanne", alias: "main station" },
     { match: /bern\s*(hb|hbf|bahnhof)/i, id: "8507000", name: "Bern", alias: "main station" },
     { match: /basel\s*(sbb|hb|hbf|bahnhof)/i, id: "8500010", name: "Basel SBB", alias: "main station" }
   ];
-  const input = $("search"), sug = $("suggest");
-  let results = [], active = -1, searchTimer = 0, searchSeq = 0;
-  function showSuggest() {
-    sug.replaceChildren();
-    results.forEach((r, i) => {
-      const li = el("li"); li.setAttribute("role", "option"); li.id = "sug-" + i;
-      li.append(el("span", "", r.name + (r.alias ? " (" + r.alias + ")" : "")));
-      if (KIND[r.icon]) li.append(el("span", "kind " + r.icon, KIND[r.icon]));
-      li.setAttribute("aria-selected", String(i === active));
-      li.addEventListener("mousedown", (e) => { e.preventDefault(); choose(r); });
-      sug.append(li);
-    });
-    sug.hidden = !results.length;
-    input.setAttribute("aria-expanded", String(!!results.length));
+  function frequent() {
+    return Object.values(state.freq).sort((a, b) => b.n - a.n || b.t - a.t).slice(0, 4);
   }
-  function choose(r) { input.value = ""; results = []; showSuggest(); selectStation(r); input.blur(); }
-  input.addEventListener("input", () => {
-    clearTimeout(searchTimer);
-    const q = input.value.trim();
-    if (q.length < 2) { results = []; showSuggest(); return; }
-    searchTimer = setTimeout(async () => {
-      const seq = ++searchSeq;
-      try {
-        const data = await getJSON("/locations", [["query", q], ["type", "station"]]);
-        if (seq !== searchSeq) return;
-        let found = (data.stations || []).filter((s) => s.id && s.name).map((s) => ({ id: String(s.id), name: s.name, icon: s.icon || "" }));
-        // Main stations whose everyday name differs from the timetable name.
-        for (const a of ALIASES) if (a.match.test(q) && !found.some((s) => s.id === a.id)) found.unshift({ id: a.id, name: a.name, icon: "train" });
-        for (const s of found) { const a = ALIASES.find((a) => a.id === s.id && a.match.test(q)); if (a) s.alias = a.alias; }
-        // Train stations first when trains are shown, keeping the service's order otherwise.
-        if (state.modes.includes("train")) found = found.filter((s) => s.icon === "train").concat(found.filter((s) => s.icon !== "train"));
-        results = found.slice(0, 8);
-        active = results.length ? 0 : -1; showSuggest();
-      } catch { results = []; showSuggest(); }
-    }, 250);
-  });
-  input.addEventListener("keydown", (e) => {
-    if (e.key === "ArrowDown" && results.length) { active = (active + 1) % results.length; showSuggest(); e.preventDefault(); }
-    else if (e.key === "ArrowUp" && results.length) { active = (active - 1 + results.length) % results.length; showSuggest(); e.preventDefault(); }
-    else if (e.key === "Enter" && active >= 0) { choose(results[active]); e.preventDefault(); }
-    else if (e.key === "Escape") { results = []; showSuggest(); }
-  });
-  input.addEventListener("blur", () => setTimeout(() => { results = []; showSuggest(); }, 100));
+  function syncInputs() {
+    const fi = $("from-in"), ti = $("to-in");
+    if (document.activeElement !== fi) fi.value = state.from ? state.from.name : "";
+    if (document.activeElement !== ti) ti.value = state.to ? state.to.name : "";
+    $("to-clear").hidden = !state.to;
+    $("swap").disabled = !isTrip();
+  }
+
+  function stationField(input, list, onPick, current) {
+    let results = [], heading = "", active = -1, timer = 0, seq = 0;
+    function show() {
+      list.replaceChildren();
+      if (results.length && heading) { const h = el("li", "head", heading); h.setAttribute("role", "presentation"); list.append(h); }
+      results.forEach((r, i) => {
+        const li = el("li"); li.setAttribute("role", "option"); li.id = list.id + "-" + i;
+        li.append(el("span", "", r.name + (r.alias ? " (" + r.alias + ")" : "")));
+        if (KIND[r.icon]) li.append(el("span", "kind " + r.icon, KIND[r.icon]));
+        li.setAttribute("aria-selected", String(i === active));
+        li.addEventListener("mousedown", (e) => { e.preventDefault(); choose(r); });
+        list.append(li);
+      });
+      list.hidden = !results.length;
+      input.setAttribute("aria-expanded", String(!!results.length));
+      if (active >= 0) input.setAttribute("aria-activedescendant", list.id + "-" + active); else input.removeAttribute("aria-activedescendant");
+    }
+    function showFrequent() {
+      results = frequent(); heading = results.length ? "Frequent stations" : ""; active = -1; show();
+    }
+    function close() { results = []; show(); }
+    function choose(r) { close(); input.blur(); onPick(r); }
+    input.addEventListener("focus", () => { input.select(); showFrequent(); });
+    input.addEventListener("click", () => { if (list.hidden) showFrequent(); });
+    input.addEventListener("input", () => {
+      clearTimeout(timer);
+      const q = input.value.trim();
+      if (q.length < 2) { showFrequent(); return; }
+      timer = setTimeout(async () => {
+        const my = ++seq;
+        try {
+          const data = await getJSON("/locations", [["query", q], ["type", "station"]]);
+          if (my !== seq) return;
+          let found = (data.stations || []).filter((s) => s.id && s.name).map((s) => ({ id: String(s.id), name: s.name, icon: s.icon || "" }));
+          for (const a of ALIASES) if (a.match.test(q) && !found.some((s) => s.id === a.id)) found.unshift({ id: a.id, name: a.name, icon: "train" });
+          for (const s of found) { const a = ALIASES.find((a) => a.id === s.id && a.match.test(q)); if (a) s.alias = a.alias; }
+          if (state.modes.includes("train")) found = found.filter((s) => s.icon === "train").concat(found.filter((s) => s.icon !== "train"));
+          results = found.slice(0, 8); heading = ""; active = results.length ? 0 : -1; show();
+        } catch { close(); }
+      }, 250);
+    });
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowDown" && results.length) { active = (active + 1) % results.length; show(); e.preventDefault(); }
+      else if (e.key === "ArrowUp" && results.length) { active = (active - 1 + results.length) % results.length; show(); e.preventDefault(); }
+      else if (e.key === "Enter" && active >= 0) { choose(results[active]); e.preventDefault(); }
+      else if (e.key === "Escape") { close(); input.blur(); }
+    });
+    input.addEventListener("blur", () => setTimeout(() => { close(); syncInputs(); }, 120));
+  }
+  stationField($("from-in"), $("from-list"), setFrom);
+  stationField($("to-in"), $("to-list"), setTo);
 
   // ---------- Timers ----------
   setInterval(() => { if (!document.hidden) loadBoard({ quiet: true }); }, REFRESH_MS);
-  setInterval(() => { renderUpdated(); }, 1000);
-  setInterval(() => { renderList(); renderWatch(); }, 15000);
+  setInterval(tick, 1000);
+  setInterval(() => { renderList(); renderWatch(); }, 30000);
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden && state.loadedAt && Date.now() - state.loadedAt > REFRESH_MS) loadBoard({ quiet: true });
   });
 
+  // ---------- Settings ----------
   const gear = $("gear"), panel = $("settings"), keyIn = $("key"), keyStatus = $("key-status");
   function showKeyStatus() {
     if (!TT) { keyStatus.textContent = ""; return; }
@@ -660,6 +816,8 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
   $("key-clear").addEventListener("click", () => { if (TT) { TT.setKey(""); keyIn.value = ""; closeSettings(); markGear(); render(); toast("Key removed."); } });
   if (TT) TT.onChange(() => { renderList(); renderWatch(); markGear(); if (!panel.hidden) showKeyStatus(); });
 
+  state.limit = isTrip() ? 6 : 30;
+  save();
   render();
   loadBoard();
 })();
