@@ -12,5 +12,152 @@
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:Bonneville_-_74130_-_2023.06.05_-_L%C3%A9man_Express_-_SNCF_-_Alstom_R%C3%A9giolis_Z_31500_-_31523_%C2%A9_Anthony_Levrot.jpg",
   "file": "File:Bonneville - 74130 - 2023.06.05 - Léman Express - SNCF - Alstom Régiolis Z 31500 - 31523 © Anthony Levrot.jpg"
+ },
+ "fvdosto": {
+  "src": "trains/fvdosto.jpg",
+  "credit": "Nelso Silva from Porto, Portugal",
+  "license": "CC BY-SA 2.0",
+  "source": "https://commons.wikimedia.org/wiki/File:SBB_RABe_502_402_(51283871873).jpg",
+  "file": "File:SBB RABe 502 402 (51283871873).jpg"
+ },
+ "giruno": {
+  "src": "trains/giruno.jpg",
+  "credit": "JoachimKohler-HB",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:SBB_RABe_501_030_%22Lambarda%22_in_Z%C3%BCrich_HB_(2026).jpg",
+  "file": "File:SBB RABe 501 030 \"Lambarda\" in Zürich HB (2026).jpg"
+ },
+ "astoro": {
+  "src": "trains/astoro.jpg",
+  "credit": "Chme82",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:SBB_ETR_610-013_Astoro_Brig.jpg",
+  "file": "File:SBB ETR 610-013 Astoro Brig.jpg"
+ },
+ "icn": {
+  "src": "trains/icn.jpg",
+  "credit": "Joachim Lutz",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:SBB_RABDe_500_ICN_(yyy_A_W).jpg",
+  "file": "File:SBB RABDe 500 ICN (yyy A W).jpg"
+ },
+ "ic2000": {
+  "src": "trains/ic2000.jpg",
+  "credit": "Kabelleger / David Gubler (http://www.bahnbilder.ch)",
+  "license": "CC BY-SA 3.0",
+  "source": "https://commons.wikimedia.org/wiki/File:SBB_Re_460_Schottikon_alternate_crop.jpg",
+  "file": "File:SBB Re 460 Schottikon alternate crop.jpg"
+ },
+ "re460": {
+  "src": "trains/re460.jpg",
+  "credit": "Kabelleger / David Gubler (http://www.bahnbilder.ch)",
+  "license": "CC BY-SA 3.0",
+  "source": "https://commons.wikimedia.org/wiki/File:SBB_Re_460_Schottikon_alternate_crop.jpg",
+  "file": "File:SBB Re 460 Schottikon alternate crop.jpg"
+ },
+ "ew4": {
+  "src": "trains/ew4.jpg",
+  "credit": "Kabelleger / David Gubler",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:SBB_Re_460_028_Vevey_-_Chexbres.jpg",
+  "file": "File:SBB Re 460 028 Vevey - Chexbres.jpg"
+ },
+ "kiss511": {
+  "src": "trains/kiss511.jpg",
+  "credit": "Matti Blume",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:SBB_RABe_511,_St._Margrethen_(1Y7A2216).jpg",
+  "file": "File:SBB RABe 511, St. Margrethen (1Y7A2216).jpg"
+ },
+ "kiss512": {
+  "src": "trains/kiss512.jpg",
+  "credit": "Kecko from Eastern Switzerland",
+  "license": "CC BY 2.0",
+  "source": "https://commons.wikimedia.org/wiki/File:SBB_IR-Dosto_-_RABe_512_(52078516652).jpg",
+  "file": "File:SBB IR-Dosto - RABe 512 (52078516652).jpg"
+ },
+ "dtz": {
+  "src": "trains/dtz.jpg",
+  "credit": "Kabelleger / David Gubler (http://www.bahnbilder.ch)",
+  "license": "CC BY-SA 3.0",
+  "source": "https://commons.wikimedia.org/wiki/File:SBB_RABe_514_Andelfingen.jpg",
+  "file": "File:SBB RABe 514 Andelfingen.jpg"
+ },
+ "dpz": {
+  "src": "trains/dpz.jpg",
+  "credit": "Kabelleger / David Gubler",
+  "license": "CC BY-SA 3.0",
+  "source": "https://commons.wikimedia.org/wiki/File:SBB_Re_450_060_ZVV_Pf%C3%A4ffikon_-_Kempten.jpg",
+  "file": "File:SBB Re 450 060 ZVV Pfäffikon - Kempten.jpg"
+ },
+ "domino": {
+  "src": "trains/domino.jpg",
+  "credit": "Kabelleger / David Gubler (http://www.bahnbilder.ch)",
+  "license": "CC BY-SA 3.0",
+  "source": "https://commons.wikimedia.org/wiki/File:SBB_RBDe_560_Domino_bei_Sierre.jpg",
+  "file": "File:SBB RBDe 560 Domino bei Sierre.jpg"
+ },
+ "flirt": {
+  "src": "trains/flirt.jpg",
+  "credit": "Markus Eigenheer from Genève, Schweiz",
+  "license": "CC BY-SA 2.0",
+  "source": "https://commons.wikimedia.org/wiki/File:SBB_CFF_FFS_Flirt_RABe_523_057_RABe_523_016_(32237619617).jpg",
+  "file": "File:SBB CFF FFS Flirt RABe 523 057 RABe 523 016 (32237619617).jpg"
+ },
+ "flirt522": {
+  "src": "trains/flirt522.jpg",
+  "credit": "Markus Eigenheer from Genève, Schweiz",
+  "license": "CC BY-SA 2.0",
+  "source": "https://commons.wikimedia.org/wiki/File:SBB_CFF_FFS_Flirt_RABe_523_057_RABe_523_016_(32237619617).jpg",
+  "file": "File:SBB CFF FFS Flirt RABe 523 057 RABe 523 016 (32237619617).jpg"
+ },
+ "tilo": {
+  "src": "trains/tilo.jpg",
+  "credit": "JoachimKohler-HB",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:TILO_-_2_gekoppelte_ETR_524_(Stadler_Flirt)_in_Biasca_(2026).jpg",
+  "file": "File:TILO - 2 gekoppelte ETR 524 (Stadler Flirt) in Biasca (2026).jpg"
+ },
+ "thurbo": {
+  "src": "trains/thurbo.jpg",
+  "credit": "Matti Blume",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Stadler_GTW,_St._Margrethen_(1Y7A2198).jpg",
+  "file": "File:Stadler GTW, St. Margrethen (1Y7A2198).jpg"
+ },
+ "traverso": {
+  "src": "trains/traverso.jpg",
+  "credit": "JoachimKohler-HB",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:SOB_RABe_526_105_Traverso_in_Kreuzlingen.jpg",
+  "file": "File:SOB RABe 526 105 Traverso in Kreuzlingen.jpg"
+ },
+ "mutz": {
+  "src": "trains/mutz.jpg",
+  "credit": "JoachimKohler-HB",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:BLS_RABe_515_016_-_Mutz_16_(Fribourg,_2014).jpg",
+  "file": "File:BLS RABe 515 016 - Mutz 16 (Fribourg, 2014).jpg"
+ },
+ "nina": {
+  "src": "trains/nina.jpg",
+  "credit": "Nelso Silva from Porto, Portugal",
+  "license": "CC BY-SA 2.0",
+  "source": "https://commons.wikimedia.org/wiki/File:BLS_RABe_525_023_%22NINA%22_(51188030266).jpg",
+  "file": "File:BLS RABe 525 023 \"NINA\" (51188030266).jpg"
+ },
+ "lotschberger": {
+  "src": "trains/lotschberger.jpg",
+  "credit": "Kabelleger / David Gubler",
+  "license": "Public domain",
+  "source": "https://commons.wikimedia.org/wiki/File:BLS_RABe_535_Loetschberger.jpg",
+  "file": "File:BLS RABe 535 Loetschberger.jpg"
+ },
+ "mika": {
+  "src": "trains/mika.jpg",
+  "credit": "Falk2",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:L02_493_Bf_Zweisimmen,_RABe_528_102.jpg",
+  "file": "File:L02 493 Bf Zweisimmen, RABe 528 102.jpg"
  }
 }
