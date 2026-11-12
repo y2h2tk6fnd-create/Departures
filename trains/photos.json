@@ -1,0 +1,16 @@
+{
+ "flirtLex": {
+  "src": "trains/flirtLex.jpg",
+  "credit": "Hoff1980",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:FLIRT_L%C3%A9man_Express_522_225_Ch%C3%AAne-Bourg.jpg",
+  "file": "File:FLIRT Léman Express 522 225 Chêne-Bourg.jpg"
+ },
+ "regiolis": {
+  "src": "trains/regiolis.jpg",
+  "credit": "Anthony Levrot",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Bonneville_-_74130_-_2023.06.05_-_L%C3%A9man_Express_-_SNCF_-_Alstom_R%C3%A9giolis_Z_31500_-_31523_%C2%A9_Anthony_Levrot.jpg",
+  "file": "File:Bonneville - 74130 - 2023.06.05 - Léman Express - SNCF - Alstom Régiolis Z 31500 - 31523 © Anthony Levrot.jpg"
+ }
+}

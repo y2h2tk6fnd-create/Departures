@@ -153,6 +153,30 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
 .more { width: 100%; border: 0; border-top: 1px solid var(--line); background: none; padding: 12px; color: var(--accent); font-weight: 600; }
 .hint { color: var(--muted); font-size: 13px; margin: 0; }
 
+/* Train types */
+.dest .type { display: block; font-size: 12.5px; font-weight: 600; color: var(--accent); margin-top: 1px; }
+.dest .type.loading { color: var(--muted); font-weight: 400; }
+.watch .train { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-top: 10px; }
+.watch .train img { width: 100%; max-width: 100%; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 10px; background: rgb(255 255 255 / .06); display: block; }
+.watch .train .tname { font: 700 18px/1.2 var(--font-display); }
+.watch .train .tdetail { color: var(--board-muted); font-size: 13.5px; }
+.watch .train .credit { color: var(--board-muted); font-size: 11px; opacity: .85; }
+.watch .train .credit a { color: inherit; }
+.head-actions { display: flex; align-items: baseline; gap: 12px; }
+.gear { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 4px 10px; font-size: 13px; font-weight: 500; }
+.settings { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; display: grid; gap: 10px; }
+.settings h2 { margin: 0; font: 700 18px/1.2 var(--font-display); }
+.settings p { margin: 0; color: var(--muted); font-size: 14px; max-width: 65ch; }
+.settings ol { margin: 0; padding-left: 20px; color: var(--muted); font-size: 14px; display: grid; gap: 4px; }
+.settings a { color: var(--accent); }
+.settings .row { display: flex; gap: 8px; flex-wrap: wrap; }
+.settings input { flex: 1 1 220px; min-width: 0; padding: 9px 11px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); font: 14px var(--font-mono); }
+.settings button { border: 0; background: var(--accent); color: #fff; border-radius: 8px; padding: 9px 14px; font-weight: 600; }
+.settings button.secondary { background: none; color: var(--accent); border: 1px solid var(--line); }
+.settings .status { font-size: 13px; font-weight: 600; }
+.settings .status.ok { color: var(--ok); }
+.settings .status.bad { color: var(--late); }
+
 @media (max-width: 560px) {
   .cols { display: none; }
   .dep { grid-template-columns: 56px minmax(0, 1fr) 46px; grid-template-areas: "time line plat" "time dest mins"; row-gap: 4px; padding: 10px 14px; }
@@ -172,8 +196,27 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
 <div class="wrap">
   <header>
     <h1>Departure Board</h1>
-    <span class="updated" id="updated">Not loaded yet</span>
+    <span class="head-actions">
+      <span class="updated" id="updated">Not loaded yet</span>
+      <button class="gear" id="gear" aria-expanded="false" aria-controls="settings">Settings</button>
+    </span>
   </header>
+
+  <section class="settings" id="settings" hidden>
+    <h2>Train types</h2>
+    <p>To show which train model runs each departure, the app reads SBB's train formation data. That needs your own free key from opentransportdata.swiss. The key stays on this device.</p>
+    <ol>
+      <li>Sign in at <a href="https://api-manager.opentransportdata.swiss/" target="_blank" rel="noopener">api-manager.opentransportdata.swiss</a>.</li>
+      <li>Open <b>Train Formation Service</b> and copy your key.</li>
+      <li>Paste it below and tap <b>Save key</b>.</li>
+    </ol>
+    <div class="row">
+      <input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your API key" aria-label="Train Formation Service API key">
+      <button id="key-save">Save key</button>
+      <button id="key-clear" class="secondary">Remove</button>
+    </div>
+    <span class="status" id="key-status" aria-live="polite"></span>
+  </section>
 
   <div class="search">
     <input id="search" type="search" placeholder="Find a station, e.g. Bern, Zürich HB, Lausanne" autocomplete="off"
@@ -208,12 +251,15 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
     <button class="more" id="more" hidden>Show more departures</button>
   </section>
 
-  <p class="hint">Live data from transport.opendata.ch (SBB timetable and real-time delays), refreshed every 30 seconds. Tap a departure to watch it. Times shown are Swiss time.</p>
+  <p class="hint">Live data from transport.opendata.ch (SBB timetable and real-time delays), refreshed every 30 seconds. Tap a departure to watch it. Times shown are Swiss time. Train types come from SBB's train formation data (set up under Settings); photos from Wikimedia Commons.</p>
 </div>
 
+<script src="trains/photos.js"></script>
+<script src="trains.js"></script>
 <script>
 (() => {
   const API = "https://transport.opendata.ch/v1";
+  const TT = window.TrainTypes;
   const REFRESH_MS = 30000;
   const $ = (id) => document.getElementById(id);
 
@@ -272,7 +318,10 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
       planned, expected, delay: expected && planned ? Math.round((expected - planned) / 60) : delay,
       platform: progPlat || plat, platformChanged: !!(progPlat && plat && progPlat !== plat),
       line, longDistance: /^(IC|ICE|IR|EC|EN|RE|TGV|RJX?|NJ|PE|IRE|EXT)/.test(cat),
-      to: j.to || "", via, operator: j.operator || ""
+      to: j.to || "", via, operator: j.operator || "",
+      trainNo: /^\d+$/.test(String(j.name || "")) ? String(parseInt(j.name, 10)) : null,
+      evu: TT ? TT.evuFor(j.operator) : null,
+      date: planned != null ? new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Zurich" }).format(new Date(planned * 1000)) : null
     };
   }
 
@@ -372,6 +421,8 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
       const lc = el("span", "line-c"); lc.append(el("span", "badge" + (j.longDistance ? " long" : ""), j.line));
       const d = el("span", "dest"); d.append(el("b", "", j.to));
       if (j.via.length) d.append(el("span", "via", "via " + j.via.slice(0, 4).join(", ")));
+      const tl = typeLabel(j, true);
+      if (tl) d.append(tl);
       const p = el("span", "plat" + (j.platformChanged ? " changed" : ""), j.platform || "–");
       if (j.platformChanged) p.title = "Platform changed";
       const m = el("span", "mins" + (minutesUntil(j.expected) <= 5 ? " soon" : ""), untilText(j.expected));
@@ -400,6 +451,46 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
     return box;
   }
 
+  // ---------- Train types ----------
+  function typeLabel(j, fetchNow) {
+    if (!TT || !TT.hasKey() || !j.trainNo || !j.evu) return null;
+    const r = fetchNow || (state.watch && state.watch.key === j.key) ? TT.lookup(j) : null;
+    if (!r || r.state === "none" || r.state === "error") return null;
+    if (r.state === "loading") return el("span", "type loading", "Checking train type…");
+    if (r.info.unknown) return null;
+    const names = [...new Set(r.info.models.map((m) => TT.MODELS[m].name))];
+    return el("span", "type", names.join(" + ") + (r.info.loco && r.info.models.length ? " · " + TT.MODELS[r.info.loco].name : ""));
+  }
+
+  function trainBlock(w) {
+    if (!TT || !TT.hasKey() || !w.trainNo || !w.evu) return null;
+    const r = TT.lookup(w);
+    const box = el("div", "train");
+    if (!r || r.state === "loading") { box.append(el("span", "tdetail", "Checking which train this is…")); return box; }
+    if (r.state !== "ok" || r.info.unknown) {
+      box.append(el("span", "tdetail", r.state === "ok" ? "Train type: " + (r.info.raw || "not known") : "The train type isn't published for this train yet."));
+      return box;
+    }
+    const info = r.info, m = TT.MODELS[info.main], photo = TT.PHOTOS[info.main];
+    if (photo) {
+      const img = el("img"); img.src = photo.src; img.alt = `${m.name}, ${m.detail}`; img.loading = "lazy";
+      box.append(img);
+    }
+    const names = [...new Set(info.models.map((id) => TT.MODELS[id].name))];
+    box.append(el("span", "tname", (names.length ? names.join(" + ") : m.name) + (info.loco && info.models.length ? " with " + TT.MODELS[info.loco].name : "")));
+    const facts = [m.detail];
+    if (info.cars) facts.push(info.cars + (info.cars === 1 ? " car" : " cars"));
+    if (info.seats) facts.push(info.seats + " seats");
+    if (info.length) facts.push(info.length + " m long");
+    box.append(el("span", "tdetail", facts.join(" · ")));
+    if (photo) {
+      const c = el("span", "credit", "Photo: " + photo.credit + ", ");
+      const a = el("a", "", photo.license); a.href = photo.source; a.target = "_blank"; a.rel = "noopener";
+      c.append(a, ", via Wikimedia Commons"); box.append(c);
+    }
+    return box;
+  }
+
   function renderWatch() {
     const box = $("watch");
     const w = state.watch;
@@ -419,6 +510,8 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
     const c = el("span", "count", untilText(expected));
     c.append(el("small", "", "leaves " + hhmm(expected)));
     box.append(c);
+    const tb = trainBlock(w);
+    if (tb) box.append(tb);
     const stop = el("button", "stop", "Stop watching");
     stop.addEventListener("click", () => { state.watch = null; save(); render(); });
     box.append(stop);
@@ -456,7 +549,8 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
     else {
       const s = state.stations.find((x) => x.id === state.current);
       state.watch = { key: j.key, stationId: state.current, stationName: s ? s.name : "", line: j.line, to: j.to,
-        planned: j.planned, expected: j.expected, delay: j.delay, platform: j.platform };
+        planned: j.planned, expected: j.expected, delay: j.delay, platform: j.platform,
+        trainNo: j.trainNo, evu: j.evu, date: j.date };
     }
     save(); render();
   }
@@ -530,6 +624,20 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden && state.loadedAt && Date.now() - state.loadedAt > REFRESH_MS) loadBoard({ quiet: true });
   });
+
+  const gear = $("gear"), panel = $("settings"), keyIn = $("key"), keyStatus = $("key-status");
+  function showKeyStatus() {
+    if (!TT) { keyStatus.textContent = ""; return; }
+    keyStatus.className = "status " + (TT.authFailed() ? "bad" : TT.hasKey() ? "ok" : "");
+    keyStatus.textContent = TT.authFailed() ? "The formation service didn't accept this key. Check that it's the Train Formation Service key." : TT.hasKey() ? "Key saved. Train types are shown on the board." : "No key saved yet.";
+  }
+  gear.addEventListener("click", () => {
+    panel.hidden = !panel.hidden; gear.setAttribute("aria-expanded", String(!panel.hidden));
+    if (!panel.hidden) { keyIn.value = TT ? TT.getKey() : ""; showKeyStatus(); }
+  });
+  $("key-save").addEventListener("click", () => { if (TT && keyIn.value.trim()) { TT.setKey(keyIn.value); showKeyStatus(); render(); } });
+  $("key-clear").addEventListener("click", () => { if (TT) { TT.setKey(""); keyIn.value = ""; showKeyStatus(); render(); } });
+  if (TT) TT.onChange(() => { renderList(); renderWatch(); if (!panel.hidden) showKeyStatus(); });
 
   render();
   loadBoard();

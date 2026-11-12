@@ -27,6 +27,17 @@ On the board:
 
 All times are Swiss time, wherever you open the page.
 
+## Train types and photos
+
+The board can show which train model runs each departure (FLIRT, Régiolis, FV-Dosto, KISS and so on), and the "Watching" card shows a photo of it with the number of cars and seats. This uses SBB's Train Formation Service, which needs a free personal key:
+
+1. Sign in at [api-manager.opentransportdata.swiss](https://api-manager.opentransportdata.swiss/) and copy your **Train Formation Service** key.
+2. In the app, tap **Settings**, paste the key and tap **Save key**.
+
+The key is stored only on your device. Train types are published for SBB, BLS, SOB, THURBO, TPF, TRN, Zentralbahn, RhB, MBC and SZU trains, plus the trains they run jointly with France, Italy and Germany. Some trains have no published formation; those simply show no type.
+
+Photos come from Wikimedia Commons; see [trains/CREDITS.md](trains/CREDITS.md).
+
 ## Data
 
 Timetable and real-time data come from the free public API at [transport.opendata.ch](https://transport.opendata.ch). No account or key is needed. Nothing is sent anywhere else, and your saved stations stay in your browser.
