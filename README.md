@@ -2,7 +2,7 @@
 
 A live departure board for any Swiss station (SBB and every other operator in the Swiss timetable). It shows real-time delays and platform changes and refreshes every 30 seconds.
 
-**Open it:** https://y2h2tk6fnd-create.github.io/departures/
+**Open it:** https://y2h2tk6fnd-create.github.io/Departures/
 
 ## Put it on your iPhone
 
