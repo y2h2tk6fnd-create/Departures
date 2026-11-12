@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f1a2e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Departures">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="manifest" href="manifest.json">
+<title>Departure Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: a station board. Pinned stations as tabs above, one dense row per departure, a "watched train" card on top. */
+:root {
+  --bg: #eef1f5;
+  --surface: #ffffff;
+  --line: #d6dce5;
+  --fg: #121a26;
+  --muted: #5b6676;
+  --board: #0f1a2e;
+  --board-fg: #f4f6fa;
+  --board-muted: #9aa6ba;
+  --accent: #1f5fd6;
+  --late: #c8261d;
+  --late-bg: #fde9e7;
+  --ok: #17803d;
+  --warn-bg: #fff3c4;
+  --warn-fg: #6b4e00;
+  --font-display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0a111e; --surface: #121c2e; --line: #24324a; --fg: #e8edf5; --muted: #93a0b5;
+    --board: #16233b; --board-fg: #f4f6fa; --board-muted: #9aa6ba;
+    --accent: #6d9cff; --late: #ff6b5e; --late-bg: #3a1714; --ok: #4cc97a;
+    --warn-bg: #3a3010; --warn-fg: #ffd866;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--fg);
+  font: 15px/1.45 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: max(16px, env(safe-area-inset-top, 0px)) 40px;
+}
+.wrap { max-width: 860px; margin: 0 auto; display: grid; gap: 16px; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; text-wrap: balance; }
+.updated { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+
+/* Search */
+.search { position: relative; }
+.search input {
+  width: 100%; padding: 12px 14px; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--surface); font-size: 16px;
+}
+.suggest {
+  position: absolute; z-index: 5; left: 0; right: 0; top: calc(100% + 4px);
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+  list-style: none; margin: 0; padding: 4px; box-shadow: 0 8px 24px rgb(0 0 0 / .15);
+}
+.suggest li { padding: 9px 10px; border-radius: 6px; cursor: pointer; }
+.suggest li[aria-selected="true"], .suggest li:hover { background: var(--bg); }
+
+/* Pinned stations */
+.tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+.tab {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 1px solid var(--line); background: var(--surface);
+  border-radius: 999px; padding: 6px 6px 6px 14px; font-weight: 500;
+}
+.tab[aria-current="true"] { background: var(--board); color: var(--board-fg); border-color: var(--board); }
+.tab .x { border: 0; background: none; padding: 2px 7px; border-radius: 999px; opacity: .6; line-height: 1; }
+.tab .x:hover { opacity: 1; background: rgb(127 127 127 / .2); }
+
+/* Controls */
+.controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip {
+  border: 1px solid var(--line); background: var(--surface); border-radius: 8px;
+  padding: 5px 11px; font-size: 13px; font-weight: 500;
+}
+.chip[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); }
+.towards { flex: 1 1 200px; min-width: 0; }
+.towards input { width: 100%; padding: 7px 11px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); font-size: 14px; }
+
+/* Watched departure */
+.watch {
+  background: var(--board); color: var(--board-fg); border-radius: 14px; padding: 16px 18px;
+  display: grid; grid-template-columns: 1fr auto; gap: 4px 16px; align-items: center;
+}
+.watch .label { font: 600 11px/1 var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: var(--board-muted); }
+.watch .what { font: 600 20px/1.2 var(--font-display); min-width: 0; }
+.watch .detail { color: var(--board-muted); font-size: 14px; }
+.watch .count { grid-row: 1 / span 3; grid-column: 2; text-align: right; font: 700 40px/1 var(--font-display); font-variant-numeric: tabular-nums; }
+.watch .count small { display: block; font: 500 12px/1.4 var(--font-body); color: var(--board-muted); }
+.watch .late { color: #ff8a7f; font-weight: 600; }
+.watch .stop { grid-column: 1 / -1; justify-self: start; margin-top: 8px; background: none; border: 1px solid rgb(255 255 255 / .3); color: var(--board-fg); border-radius: 8px; padding: 4px 10px; font-size: 13px; }
+
+/* Board */
+.board { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.board-head {
+  background: var(--board); color: var(--board-fg); padding: 14px 18px;
+  display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap;
+}
+.board-head h2 { margin: 0; font: 700 22px/1.15 var(--font-display); }
+.board-head .clock { font: 600 20px/1 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--board-muted); }
+.cols, .dep {
+  display: grid; grid-template-columns: 64px 82px minmax(0, 1fr) 56px 56px; gap: 0 12px; align-items: center;
+  padding: 10px 18px;
+}
+.cols { font: 600 11px/1 var(--font-body); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); padding-block: 9px; }
+.cols .r, .dep .r { text-align: right; }
+.dep { border-bottom: 1px solid var(--line); cursor: pointer; }
+.dep:last-child { border-bottom: 0; }
+.dep:hover { background: color-mix(in srgb, var(--accent) 5%, var(--surface)); }
+.dep.watched { box-shadow: inset 4px 0 0 var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
+.time { font: 600 17px/1.1 var(--font-mono); font-variant-numeric: tabular-nums; }
+.delay { display: block; font: 600 12px/1.3 var(--font-body); color: var(--late); }
+.badge {
+  display: inline-block; font: 700 13px/1 var(--font-display); letter-spacing: .02em;
+  padding: 5px 7px; border-radius: 5px; border: 1.5px solid currentColor; white-space: nowrap;
+}
+.badge.long { background: var(--fg); color: var(--surface); border-color: var(--fg); }
+.dest { min-width: 0; }
+.dest b { display: block; font-weight: 600; font-size: 16px; overflow-wrap: anywhere; }
+.dest .via { display: block; color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.plat { font: 600 17px/1 var(--font-mono); text-align: right; }
+.plat.changed { justify-self: end; color: var(--warn-fg); background: var(--warn-bg); border-radius: 5px; padding: 4px 5px; }
+.mins { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--muted); }
+.mins.soon { color: var(--ok); }
+.empty, .error { padding: 28px 18px; color: var(--muted); text-align: center; }
+.error { color: var(--late); background: var(--late-bg); }
+.more { width: 100%; border: 0; border-top: 1px solid var(--line); background: none; padding: 12px; color: var(--accent); font-weight: 600; }
+.hint { color: var(--muted); font-size: 13px; margin: 0; }
+
+@media (max-width: 560px) {
+  .cols { display: none; }
+  .dep { grid-template-columns: 56px minmax(0, 1fr) 46px; grid-template-areas: "time line plat" "time dest mins"; row-gap: 4px; padding: 10px 14px; }
+  .dep .time-c { grid-area: time; align-self: start; }
+  .dep .line-c { grid-area: line; }
+  .dep .dest { grid-area: dest; }
+  .dep .plat { grid-area: plat; }
+  .dep .mins { grid-area: mins; }
+  .watch .count { font-size: 32px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .dep { transition: background-color .15s; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Departure Board</h1>
+    <span class="updated" id="updated">Not loaded yet</span>
+  </header>
+
+  <div class="search">
+    <input id="search" type="search" placeholder="Find a station, e.g. Bern, Zürich HB, Lausanne" autocomplete="off"
+           role="combobox" aria-expanded="false" aria-controls="suggest" aria-label="Find a station">
+    <ul id="suggest" class="suggest" role="listbox" hidden></ul>
+  </div>
+
+  <nav class="tabs" id="tabs" aria-label="Saved stations"></nav>
+
+  <div class="controls">
+    <div class="chips" id="modes" role="group" aria-label="Transport types">
+      <button class="chip" data-mode="train">Train</button>
+      <button class="chip" data-mode="tram">Tram</button>
+      <button class="chip" data-mode="bus">Bus</button>
+      <button class="chip" data-mode="ship">Boat</button>
+      <button class="chip" data-mode="cableway">Cableway</button>
+    </div>
+    <label class="towards"><input id="towards" type="search" placeholder="Only trains towards… (e.g. Genève)" aria-label="Only show departures towards a stop"></label>
+  </div>
+
+  <section class="watch" id="watch" hidden aria-live="polite"></section>
+
+  <section class="board" aria-live="polite">
+    <div class="board-head">
+      <h2 id="station-name">–</h2>
+      <span class="clock" id="clock">--:--</span>
+    </div>
+    <div class="cols" aria-hidden="true">
+      <span>Dep.</span><span>Line</span><span>Destination</span><span class="r">Pl.</span><span class="r">In</span>
+    </div>
+    <div id="list"><div class="empty">Search for a station to see its departures.</div></div>
+    <button class="more" id="more" hidden>Show more departures</button>
+  </section>
+
+  <p class="hint">Live data from transport.opendata.ch (SBB timetable and real-time delays), refreshed every 30 seconds. Tap a departure to watch it. Times shown are Swiss time.</p>
+</div>
+
+<script>
+(() => {
+  const API = "https://transport.opendata.ch/v1";
+  const REFRESH_MS = 30000;
+  const $ = (id) => document.getElementById(id);
+
+  // ---------- Saved settings (this browser only) ----------
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem("sbbdep." + k); return v ? JSON.parse(v) : d; } catch { return d; } },
+    set(k, v) { try { localStorage.setItem("sbbdep." + k, JSON.stringify(v)); } catch {} }
+  };
+  const state = {
+    stations: store.get("stations", [{ id: "8507000", name: "Bern" }, { id: "8503000", name: "Zürich HB" }]),
+    current: store.get("current", "8507000"),
+    modes: store.get("modes", ["train"]),
+    towards: store.get("towards", ""),
+    watch: store.get("watch", null),   // {key, stationId, title, to, ts}
+    limit: 30,
+    journeys: [],
+    loadedAt: null,
+    error: null,
+    loading: false
+  };
+  const save = () => {
+    store.set("stations", state.stations); store.set("current", state.current);
+    store.set("modes", state.modes); store.set("towards", state.towards); store.set("watch", state.watch);
+  };
+
+  // ---------- Time helpers (always Swiss time) ----------
+  const fmtTime = new Intl.DateTimeFormat("de-CH", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Zurich" });
+  const fmtClock = new Intl.DateTimeFormat("de-CH", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Europe/Zurich" });
+  const hhmm = (sec) => fmtTime.format(new Date(sec * 1000));
+  const now = () => Date.now() / 1000;
+
+  // ---------- Journey normalisation ----------
+  const tsOf = (iso, fallback) => {
+    if (!iso) return fallback ?? null;
+    // API gives "2026-11-12T10:02:00+0100"; add the colon so every browser parses it.
+    const t = Date.parse(String(iso).replace(/([+-]\d{2})(\d{2})$/, "$1:$2"));
+    return Number.isFinite(t) ? t / 1000 : (fallback ?? null);
+  };
+  const cleanPlat = (p) => (p == null ? "" : String(p).replace(/!$/, "").trim());
+
+  function normalise(j) {
+    const stop = j.stop || {};
+    const planned = stop.departureTimestamp ?? tsOf(stop.departure);
+    const delay = Number.isFinite(stop.delay) ? stop.delay : 0;
+    const progTs = tsOf(stop.prognosis && stop.prognosis.departure);
+    const expected = progTs ?? (planned != null ? planned + delay * 60 : null);
+    const plat = cleanPlat(stop.platform);
+    const progPlat = cleanPlat(stop.prognosis && stop.prognosis.platform);
+    const cat = j.category || "";
+    const num = j.number && !/^\d{4,}$/.test(String(j.number)) ? String(j.number) : "";
+    const line = (cat + (num ? " " + num : "")).trim() || j.name || "?";
+    const via = (j.passList || []).slice(1, -1)
+      .map((p) => p.station && p.station.name).filter(Boolean);
+    return {
+      key: [planned, j.category, j.number, j.to].join("|"),
+      planned, expected, delay: expected && planned ? Math.round((expected - planned) / 60) : delay,
+      platform: progPlat || plat, platformChanged: !!(progPlat && plat && progPlat !== plat),
+      line, longDistance: /^(IC|ICE|IR|EC|EN|RE|TGV|RJX?|NJ|PE|IRE|EXT)/.test(cat),
+      to: j.to || "", via, operator: j.operator || ""
+    };
+  }
+
+  // ---------- API ----------
+  async function getJSON(path, params) {
+    const url = new URL(API + path);
+    for (const [k, v] of params) url.searchParams.append(k, v);
+    const res = await fetch(url, { headers: { Accept: "application/json" } });
+    if (!res.ok) throw new Error(res.status === 429 ? "Too many requests. Wait a minute and it will retry." : "The timetable service answered with error " + res.status + ".");
+    return res.json();
+  }
+
+  async function loadBoard({ quiet } = {}) {
+    if (!state.current) return;
+    state.loading = true;
+    if (!quiet) render();
+    const params = [["id", state.current], ["limit", String(state.limit)]];
+    for (const m of state.modes) params.push(["transportations[]", m]);
+    try {
+      const data = await getJSON("/stationboard", params);
+      state.journeys = (data.stationboard || []).map(normalise);
+      if (data.station && data.station.name) {
+        const s = state.stations.find((x) => x.id === state.current);
+        if (s && s.name !== data.station.name) { s.name = data.station.name; save(); }
+      }
+      state.loadedAt = Date.now();
+      state.error = null;
+    } catch (e) {
+      state.error = e instanceof TypeError ? "Can't reach the timetable service. Check your internet connection." : e.message;
+    } finally {
+      state.loading = false;
+      render();
+    }
+  }
+
+  // ---------- Rendering ----------
+  const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+
+  function minutesUntil(ts) { return Math.floor((ts - now()) / 60); }
+  function untilText(ts) {
+    const m = minutesUntil(ts);
+    if (m <= 0) return "now";
+    if (m < 60) return m + "′";
+    return Math.floor(m / 60) + "h" + String(m % 60).padStart(2, "0");
+  }
+
+  function filtered() {
+    const q = state.towards.trim().toLowerCase();
+    const cutoff = now() - 60;
+    return state.journeys.filter((j) => (j.expected ?? j.planned) >= cutoff &&
+      (!q || j.to.toLowerCase().includes(q) || j.via.some((v) => v.toLowerCase().includes(q))));
+  }
+
+  function renderTabs() {
+    const tabs = $("tabs"); tabs.replaceChildren();
+    for (const s of state.stations) {
+      const t = el("span", "tab"); t.setAttribute("aria-current", String(s.id === state.current));
+      const b = el("button", "", s.name); b.style.cssText = "border:0;background:none;padding:0;font-weight:inherit";
+      b.addEventListener("click", () => selectStation(s));
+      const x = el("button", "x", "×"); x.setAttribute("aria-label", "Remove " + s.name);
+      x.addEventListener("click", () => removeStation(s.id));
+      t.append(b, x); tabs.append(t);
+    }
+  }
+
+  function renderModes() {
+    for (const b of $("modes").querySelectorAll(".chip"))
+      b.setAttribute("aria-pressed", String(state.modes.includes(b.dataset.mode)));
+  }
+
+  function renderList() {
+    const list = $("list"); list.replaceChildren();
+    const s = state.stations.find((x) => x.id === state.current);
+    $("station-name").textContent = s ? s.name : "–";
+    if (state.error) { list.append(el("div", "error", state.error)); }
+    if (!state.journeys.length) {
+      if (!state.error) list.append(el("div", "empty", state.loading ? "Loading departures…" : (s ? "No departures found for these transport types." : "Search for a station to see its departures.")));
+      $("more").hidden = true;
+      return;
+    }
+    const rows = filtered();
+    if (!rows.length) list.append(el("div", "empty", "No departures towards “" + state.towards + "” in the next " + state.journeys.length + " departures."));
+    for (const j of rows) {
+      const r = el("div", "dep" + (state.watch && state.watch.key === j.key ? " watched" : ""));
+      r.tabIndex = 0; r.setAttribute("role", "button");
+      r.setAttribute("aria-label", `${j.line} to ${j.to}, ${hhmm(j.planned)}${j.delay > 0 ? ", " + j.delay + " minutes late" : ""}, platform ${j.platform || "unknown"}. Watch this departure.`);
+      const tc = el("span", "time-c"); tc.append(el("span", "time", hhmm(j.planned)));
+      if (j.delay > 0) tc.append(el("span", "delay", "+" + j.delay + " min"));
+      const lc = el("span", "line-c"); lc.append(el("span", "badge" + (j.longDistance ? " long" : ""), j.line));
+      const d = el("span", "dest"); d.append(el("b", "", j.to));
+      if (j.via.length) d.append(el("span", "via", "via " + j.via.slice(0, 4).join(", ")));
+      const p = el("span", "plat" + (j.platformChanged ? " changed" : ""), j.platform || "–");
+      if (j.platformChanged) p.title = "Platform changed";
+      const m = el("span", "mins" + (minutesUntil(j.expected) <= 5 ? " soon" : ""), untilText(j.expected));
+      r.append(tc, lc, d, p, m);
+      const pick = () => toggleWatch(j);
+      r.addEventListener("click", pick);
+      r.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } });
+      list.append(r);
+    }
+    $("more").hidden = state.limit >= 120;
+  }
+
+  function renderWatch() {
+    const box = $("watch");
+    const w = state.watch;
+    if (!w) { box.hidden = true; document.title = "Departure Board"; return; }
+    const live = w.stationId === state.current ? state.journeys.find((j) => j.key === w.key) : null;
+    const expected = live ? live.expected : w.expected;
+    if (expected < now() - 120) { state.watch = null; save(); box.hidden = true; document.title = "Departure Board"; return; }
+    if (live) { Object.assign(w, { expected: live.expected, delay: live.delay, platform: live.platform }); save(); }
+    box.replaceChildren();
+    box.append(el("span", "label", "Watching"));
+    box.append(el("span", "what", `${w.line} to ${w.to}`));
+    const det = el("span", "detail");
+    det.append(`${hhmm(w.planned)} from ${w.stationName} · platform ${w.platform || "–"}`);
+    if (w.delay > 0) { det.append(" · "); det.append(el("span", "late", "+" + w.delay + " min late")); }
+    else if (live) det.append(" · on time");
+    box.append(det);
+    const c = el("span", "count", untilText(expected));
+    c.append(el("small", "", "leaves " + hhmm(expected)));
+    box.append(c);
+    const stop = el("button", "stop", "Stop watching");
+    stop.addEventListener("click", () => { state.watch = null; save(); render(); });
+    box.append(stop);
+    box.hidden = false;
+    document.title = `${untilText(expected)} · ${w.line} ${w.to}`;
+  }
+
+  function renderUpdated() {
+    const u = $("updated");
+    if (state.loading && !state.loadedAt) u.textContent = "Loading…";
+    else if (state.loadedAt) {
+      const s = Math.round((Date.now() - state.loadedAt) / 1000);
+      u.textContent = "Updated " + (s < 5 ? "just now" : s < 60 ? s + " s ago" : Math.floor(s / 60) + " min ago");
+    }
+    $("clock").textContent = fmtClock.format(new Date());
+  }
+
+  function render() { renderTabs(); renderModes(); renderList(); renderWatch(); renderUpdated(); }
+
+  // ---------- Actions ----------
+  function selectStation(s) {
+    if (!state.stations.some((x) => x.id === s.id)) state.stations.push({ id: s.id, name: s.name });
+    state.current = s.id; state.journeys = []; state.error = null; state.limit = 30;
+    save(); loadBoard();
+  }
+  function removeStation(id) {
+    state.stations = state.stations.filter((s) => s.id !== id);
+    if (state.current === id) { state.current = state.stations[0] ? state.stations[0].id : null; state.journeys = []; }
+    save(); render(); if (state.current) loadBoard();
+  }
+  function toggleWatch(j) {
+    if (state.watch && state.watch.key === j.key) state.watch = null;
+    else {
+      const s = state.stations.find((x) => x.id === state.current);
+      state.watch = { key: j.key, stationId: state.current, stationName: s ? s.name : "", line: j.line, to: j.to,
+        planned: j.planned, expected: j.expected, delay: j.delay, platform: j.platform };
+    }
+    save(); render();
+  }
+
+  $("modes").addEventListener("click", (e) => {
+    const b = e.target.closest(".chip"); if (!b) return;
+    const m = b.dataset.mode;
+    state.modes = state.modes.includes(m) ? state.modes.filter((x) => x !== m) : [...state.modes, m];
+    if (!state.modes.length) state.modes = [m];
+    save(); loadBoard();
+  });
+  $("towards").value = state.towards;
+  $("towards").addEventListener("input", (e) => { state.towards = e.target.value; save(); renderList(); });
+  $("more").addEventListener("click", () => { state.limit = Math.min(120, state.limit + 30); loadBoard({ quiet: true }); });
+
+  // ---------- Station search ----------
+  const input = $("search"), sug = $("suggest");
+  let results = [], active = -1, searchTimer = 0, searchSeq = 0;
+  function showSuggest() {
+    sug.replaceChildren();
+    results.forEach((r, i) => {
+      const li = el("li", "", r.name); li.setAttribute("role", "option"); li.id = "sug-" + i;
+      li.setAttribute("aria-selected", String(i === active));
+      li.addEventListener("mousedown", (e) => { e.preventDefault(); choose(r); });
+      sug.append(li);
+    });
+    sug.hidden = !results.length;
+    input.setAttribute("aria-expanded", String(!!results.length));
+  }
+  function choose(r) { input.value = ""; results = []; showSuggest(); selectStation(r); input.blur(); }
+  input.addEventListener("input", () => {
+    clearTimeout(searchTimer);
+    const q = input.value.trim();
+    if (q.length < 2) { results = []; showSuggest(); return; }
+    searchTimer = setTimeout(async () => {
+      const seq = ++searchSeq;
+      try {
+        const data = await getJSON("/locations", [["query", q], ["type", "station"]]);
+        if (seq !== searchSeq) return;
+        results = (data.stations || []).filter((s) => s.id && s.name).slice(0, 8).map((s) => ({ id: String(s.id), name: s.name }));
+        active = results.length ? 0 : -1; showSuggest();
+      } catch { results = []; showSuggest(); }
+    }, 250);
+  });
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowDown" && results.length) { active = (active + 1) % results.length; showSuggest(); e.preventDefault(); }
+    else if (e.key === "ArrowUp" && results.length) { active = (active - 1 + results.length) % results.length; showSuggest(); e.preventDefault(); }
+    else if (e.key === "Enter" && active >= 0) { choose(results[active]); e.preventDefault(); }
+    else if (e.key === "Escape") { results = []; showSuggest(); }
+  });
+  input.addEventListener("blur", () => setTimeout(() => { results = []; showSuggest(); }, 100));
+
+  // ---------- Timers ----------
+  setInterval(() => { if (!document.hidden) loadBoard({ quiet: true }); }, REFRESH_MS);
+  setInterval(() => { renderUpdated(); }, 1000);
+  setInterval(() => { renderList(); renderWatch(); }, 15000);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && state.loadedAt && Date.now() - state.loadedAt > REFRESH_MS) loadBoard({ quiet: true });
+  });
+
+  render();
+  loadBoard();
+})();
+</script>
+</body>
+</html>
