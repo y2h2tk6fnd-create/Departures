@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0f1a2e">
+<meta name="theme-color" content="#111111">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Departures">
@@ -18,20 +18,22 @@
 <style>
 /* Layout: a station board. Pinned stations as tabs above, one dense row per departure, a "watched train" card on top. */
 :root {
-  --bg: #eef1f5;
+  /* Black, red and white: a black board, red for what needs attention, white cards. */
+  --bg: #f2f2f2;
   --surface: #ffffff;
-  --line: #d6dce5;
-  --fg: #121a26;
-  --muted: #5b6676;
-  --board: #0f1a2e;
-  --board-fg: #f4f6fa;
-  --board-muted: #9aa6ba;
-  --accent: #1f5fd6;
-  --late: #c8261d;
-  --late-bg: #fde9e7;
-  --ok: #17803d;
-  --warn-bg: #fff3c4;
-  --warn-fg: #6b4e00;
+  --line: #dcdcdc;
+  --fg: #111111;
+  --muted: #666666;
+  --board: #111111;
+  --board-fg: #ffffff;
+  --board-muted: #a6a6a6;
+  --accent: #d8232a;
+  --accent-fg: #ffffff;
+  --late: #d8232a;
+  --late-bg: #fdeaea;
+  --ok: #d8232a;
+  --warn-bg: #d8232a;
+  --warn-fg: #ffffff;
   --font-display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
   --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
@@ -39,14 +41,15 @@
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0a111e; --surface: #121c2e; --line: #24324a; --fg: #e8edf5; --muted: #93a0b5;
-    --board: #16233b; --board-fg: #f4f6fa; --board-muted: #9aa6ba;
-    --accent: #6d9cff; --late: #ff6b5e; --late-bg: #3a1714; --ok: #4cc97a;
-    --warn-bg: #3a3010; --warn-fg: #ffd866;
+    --bg: #000000; --surface: #161616; --line: #2c2c2c; --fg: #f2f2f2; --muted: #9a9a9a;
+    --board: #1f1f1f; --board-fg: #ffffff; --board-muted: #a6a6a6;
+    --accent: #f0353b; --accent-fg: #ffffff; --late: #ff5c5c; --late-bg: #3a1012; --ok: #ff5c5c;
+    --warn-bg: #f0353b; --warn-fg: #ffffff;
     color-scheme: dark;
   }
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { margin: 0; }
 body {
   background: var(--bg); color: var(--fg);
@@ -88,7 +91,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
   border: 1px solid var(--line); background: var(--surface);
   border-radius: 999px; padding: 6px 6px 6px 14px; font-weight: 500;
 }
-.tab[aria-current="true"] { background: var(--board); color: var(--board-fg); border-color: var(--board); }
+.tab[aria-current="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
 .tab .x { border: 0; background: none; padding: 2px 7px; border-radius: 999px; opacity: .6; line-height: 1; }
 .tab .x:hover { opacity: 1; background: rgb(127 127 127 / .2); }
 
@@ -99,7 +102,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
   border: 1px solid var(--line); background: var(--surface); border-radius: 8px;
   padding: 5px 11px; font-size: 13px; font-weight: 500;
 }
-.chip[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); }
+.chip[aria-pressed="true"] { border-color: var(--fg); color: var(--surface); background: var(--fg); }
 .towards { flex: 1 1 200px; min-width: 0; }
 .towards input { width: 100%; padding: 7px 11px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); font-size: 14px; }
 
@@ -108,18 +111,18 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
   background: var(--board); color: var(--board-fg); border-radius: 14px; padding: 16px 18px;
   display: grid; grid-template-columns: 1fr auto; gap: 4px 16px; align-items: center;
 }
-.watch .label { font: 600 11px/1 var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: var(--board-muted); }
+.watch .label { font: 600 11px/1 var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: #ff6b6b; }
 .watch .what { font: 600 20px/1.2 var(--font-display); min-width: 0; }
 .watch .detail { color: var(--board-muted); font-size: 14px; }
 .watch .count { grid-row: 1 / span 3; grid-column: 2; text-align: right; font: 700 40px/1 var(--font-display); font-variant-numeric: tabular-nums; }
 .watch .count small { display: block; font: 500 12px/1.4 var(--font-body); color: var(--board-muted); }
-.watch .late { color: #ff8a7f; font-weight: 600; }
+.watch .late { color: #ff6b6b; font-weight: 600; }
 .watch .stop { grid-column: 1 / -1; justify-self: start; margin-top: 8px; background: none; border: 1px solid rgb(255 255 255 / .3); color: var(--board-fg); border-radius: 8px; padding: 4px 10px; font-size: 13px; }
 
 /* Board */
 .board { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
 .board-head {
-  background: var(--board); color: var(--board-fg); padding: 14px 18px;
+  background: var(--board); color: var(--board-fg); padding: 14px 18px; border-top: 4px solid var(--accent);
   display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap;
 }
 .board-head h2 { margin: 0; font: 700 22px/1.15 var(--font-display); }
@@ -140,21 +143,21 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
   display: inline-block; font: 700 13px/1 var(--font-display); letter-spacing: .02em;
   padding: 5px 7px; border-radius: 5px; border: 1.5px solid currentColor; white-space: nowrap;
 }
-.badge.long { background: var(--fg); color: var(--surface); border-color: var(--fg); }
+.badge.long { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
 .dest { min-width: 0; }
 .dest b { display: block; font-weight: 600; font-size: 16px; overflow-wrap: anywhere; }
 .dest .via { display: block; color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .plat { font: 600 17px/1 var(--font-mono); text-align: right; }
-.plat.changed { justify-self: end; color: var(--warn-fg); background: var(--warn-bg); border-radius: 5px; padding: 4px 5px; }
+.plat.changed { justify-self: end; font-weight: 700; color: var(--warn-fg); background: var(--warn-bg); border-radius: 5px; padding: 4px 5px; }
 .mins { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--muted); }
-.mins.soon { color: var(--ok); }
+.mins.soon { color: var(--ok); font-weight: 700; }
 .empty, .error { padding: 28px 18px; color: var(--muted); text-align: center; }
 .error { color: var(--late); background: var(--late-bg); }
 .more { width: 100%; border: 0; border-top: 1px solid var(--line); background: none; padding: 12px; color: var(--accent); font-weight: 600; }
 .hint { color: var(--muted); font-size: 13px; margin: 0; }
 
 /* Train types */
-.dest .type { display: block; font-size: 12.5px; font-weight: 600; color: var(--accent); margin-top: 1px; }
+.dest .type { display: block; font-size: 12.5px; font-weight: 600; color: var(--fg); margin-top: 1px; }
 .dest .type.loading { color: var(--muted); font-weight: 400; }
 .watch .train { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-top: 10px; }
 .watch .train img { width: 100%; max-width: 100%; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 10px; background: rgb(255 255 255 / .06); display: block; }
@@ -171,11 +174,18 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
 .settings a { color: var(--accent); }
 .settings .row { display: flex; gap: 8px; flex-wrap: wrap; }
 .settings input { flex: 1 1 220px; min-width: 0; padding: 9px 11px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); font: 14px var(--font-mono); }
-.settings button { border: 0; background: var(--accent); color: #fff; border-radius: 8px; padding: 9px 14px; font-weight: 600; }
+.settings button { border: 0; background: var(--accent); color: var(--accent-fg); border-radius: 8px; padding: 9px 14px; font-weight: 600; }
 .settings button.secondary { background: none; color: var(--accent); border: 1px solid var(--line); }
 .settings .status { font-size: 13px; font-weight: 600; }
 .settings .status.ok { color: var(--ok); }
 .settings .status.bad { color: var(--late); }
+.gear.alert { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%); z-index: 20;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  background: var(--fg); color: var(--surface); padding: 10px 16px; border-radius: 10px;
+  font-weight: 600; font-size: 14px; box-shadow: 0 6px 20px rgb(0 0 0 / .25); max-width: calc(100% - 32px);
+}
 
 @media (max-width: 560px) {
   .cols { display: none; }
@@ -251,6 +261,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
     <button class="more" id="more" hidden>Show more departures</button>
   </section>
 
+  <div class="toast" id="toast" role="status" hidden></div>
   <p class="hint">Live data from transport.opendata.ch (SBB timetable and real-time delays), refreshed every 30 seconds. Tap a departure to watch it. Times shown are Swiss time. Train types come from SBB's train formation data (set up under Settings); photos from Wikimedia Commons.</p>
 </div>
 
@@ -635,9 +646,19 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
     panel.hidden = !panel.hidden; gear.setAttribute("aria-expanded", String(!panel.hidden));
     if (!panel.hidden) { keyIn.value = TT ? TT.getKey() : ""; showKeyStatus(); }
   });
-  $("key-save").addEventListener("click", () => { if (TT && keyIn.value.trim()) { TT.setKey(keyIn.value); showKeyStatus(); render(); } });
-  $("key-clear").addEventListener("click", () => { if (TT) { TT.setKey(""); keyIn.value = ""; showKeyStatus(); render(); } });
-  if (TT) TT.onChange(() => { renderList(); renderWatch(); if (!panel.hidden) showKeyStatus(); });
+  let toastTimer = 0;
+  function toast(msg) {
+    const t = $("toast"); t.textContent = msg; t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 3000);
+  }
+  function closeSettings() { panel.hidden = true; gear.setAttribute("aria-expanded", "false"); }
+  function markGear() { gear.classList.toggle("alert", !!(TT && TT.authFailed())); }
+  $("key-save").addEventListener("click", () => {
+    if (!TT || !keyIn.value.trim()) { keyStatus.className = "status bad"; keyStatus.textContent = "Paste your key first."; return; }
+    TT.setKey(keyIn.value); closeSettings(); markGear(); render(); toast("Key saved. Train types will appear on the board.");
+  });
+  $("key-clear").addEventListener("click", () => { if (TT) { TT.setKey(""); keyIn.value = ""; closeSettings(); markGear(); render(); toast("Key removed."); } });
+  if (TT) TT.onChange(() => { renderList(); renderWatch(); markGear(); if (!panel.hidden) showKeyStatus(); });
 
   render();
   loadBoard();
