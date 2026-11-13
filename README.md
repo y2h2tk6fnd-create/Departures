@@ -14,23 +14,24 @@ Open the link above in Safari, tap **Share → Add to Home Screen**, then **Add*
 - **To** is optional. Fill it in to see the next trains from one station to the other, with arrival time, journey time and any changes. Clear it with × to go back to the departure board, or swap the two with ⇅.
 - Both fields suggest stations as you type. Tap a field to see your **four most-used stations**.
 - **Train / Tram / Bus / Boat / Cableway** choose what's shown. It starts with trains only.
-- **Tap a train** to open its page: the countdown, platform and delay in large type, the train model with a photo, the number of cars and seats, every stop with its time and platform, and on a trip each change. Tap **Watch this train** there to pin it to the top of the board with a live countdown (also shown in the browser tab title).
+- **Tap a train** to open its page: the countdown, platform and delay in large type, the train model with a photo, the number of cars and seats, every stop with its arrival and departure time (including delays) and platform, and on a trip each change. Tap **Watch this train** there to pin it to the top of the board with a live countdown (also shown in the browser tab title).
 - **Scroll the board up** to see trains that left in the last hour, marked **Departed**. A red "Now" line separates them from upcoming trains, and **Back to now** jumps back.
 
 On the board, each card shows:
 
 | What you see | Meaning |
 |---|---|
-| Red **12′05″** | Leaves in 12 minutes 5 seconds (trains leaving within 20 minutes) |
+| **12′05″** | Leaves in 12 minutes 5 seconds (trains leaving within 20 minutes) |
 | **07:28** with "in 25′" | Departure time, for trains further off |
 | **Departed** | Already left (scroll up to see these) |
-| Red **+3′** | Running 3 minutes late |
-| Platform box in red, "Changed" | The platform has changed |
+| Red tag **+3′** | Running 3 minutes late |
+| White number on blue | The platform, like the station signs |
+| Yellow ring and "new" on the platform | The platform has changed |
+| **39 min** · arr. 07:44 | Journey time and arrival: at the end of the line on a departure board, at your To station on a trip (plus "direct" or the changes) |
 | Red line badge (IC 1, IR 15, RE…) | Long-distance or regional express train |
 | Outlined line badge (S 1…) | S-Bahn, tram, bus and other local services |
-| White card with blue and red stripes | Léman Express |
-| White card with a red end and dark band | RE 33 |
-| "Arr. 07:44 · 39 min · direct" | On a From → To search: arrival, journey time and changes |
+| Blue badge, blue and red band | Léman Express |
+| Red badge, dark band with red doors | RE 33 |
 
 All times are Swiss time, wherever you open the page.
 

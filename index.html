@@ -114,10 +114,10 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
   display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 2px 14px; align-items: center; cursor: pointer;
   border-left: 5px solid var(--accent);
 }
-.watch .label { font: 600 10.5px/1 var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: #ff6b6b; }
+.watch .label { font: 600 10.5px/1 var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: var(--board-muted); }
 .watch .what { font: 600 17px/1.25 var(--font-display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .watch .wdet { color: var(--board-muted); font-size: 13px; }
-.watch .late { color: #ff6b6b; font-weight: 600; }
+.watch .late { background: var(--accent); color: #fff; font-weight: 700; font-size: 12px; padding: 1px 5px; border-radius: 4px; }
 .watch .count { grid-row: 1 / span 3; grid-column: 2; text-align: right; font: 700 30px/1 var(--font-mono); font-variant-numeric: tabular-nums; }
 .watch .stop { grid-row: 1 / span 3; grid-column: 3; background: none; border: 1px solid rgb(255 255 255 / .3); color: var(--board-fg); border-radius: 50%; width: 32px; height: 32px; font-size: 16px; line-height: 1; }
 
@@ -145,7 +145,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
   position: relative; overflow: hidden; flex: none;
   background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
   padding: 12px 12px 12px 14px; cursor: pointer;
-  display: grid; grid-template-columns: minmax(0, 1fr) 64px; grid-template-areas: "head plat" "when plat" "trip plat";
+  display: grid; grid-template-columns: minmax(0, 1fr) 56px; grid-template-areas: "head plat" "when plat" "trip plat";
   gap: 6px 12px; align-items: center;
 }
 .card:hover { border-color: var(--muted); }
@@ -153,7 +153,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .card .head { grid-area: head; display: flex; align-items: center; gap: 10px; min-width: 0; }
 .card .dest { font-weight: 600; font-size: 16.5px; line-height: 1.25; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card .when { grid-area: when; }
-.card .tripinfo { grid-area: trip; color: var(--muted); font-size: 13px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card .tripinfo { grid-area: trip; color: var(--muted); font-size: 13.5px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card .tripinfo b { color: var(--fg); font-weight: 600; }
 .card .plat { grid-area: plat; }
 
@@ -165,58 +165,39 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 
 .when { display: flex; align-items: baseline; gap: 4px 10px; flex-wrap: wrap; min-width: 0; }
 .big { font: 700 30px/1 var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
-.big.countdown { color: var(--accent); }
+.big.countdown { color: var(--fg); }
 .big.gone { font: 700 22px/1.15 var(--font-display); color: var(--muted); letter-spacing: .01em; }
-.big.now { color: var(--accent); }
+.big.now { color: var(--fg); }
 .meta { color: var(--muted); font-size: 13.5px; font-variant-numeric: tabular-nums; }
-.delay { color: var(--late); font-weight: 700; margin-left: 6px; }
+.delay { display: inline-block; background: var(--accent); color: #ffffff; font: 700 12px/1 var(--font-body); padding: 3px 5px; border-radius: 4px; margin-left: 6px; vertical-align: 1px; }
 
+/* Platform: like SBB signs, a white number on blue. */
 .plat {
-  align-self: stretch; display: grid; align-content: center; justify-items: center; gap: 1px;
-  border: 2px solid var(--fg); border-radius: 10px; padding: 6px 4px; background: var(--surface); color: var(--fg);
-  position: relative; z-index: 1; min-height: 64px;
+  justify-self: end; display: grid; place-items: center; width: 56px; height: 56px; padding: 0 3px;
+  background: #2d327d; color: #ffffff; border-radius: 8px; position: relative; z-index: 1;
 }
-.plat small { font: 600 9px/1.2 var(--font-body); letter-spacing: .08em; text-transform: uppercase; opacity: .75; }
-.plat b { font: 700 28px/1 var(--font-mono); font-variant-numeric: tabular-nums; }
-.plat b.long { font-size: 18px; }
-.plat.changed { background: var(--warn-bg); color: var(--warn-fg); border-color: var(--warn-bg); }
-.plat.unknown b { opacity: .4; }
+.plat b { font: 700 30px/1 var(--font-body); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.plat b.long { font-size: 17px; }
+.plat.changed { box-shadow: 0 0 0 3px #ffd400; }
+.plat.changed::after { content: "new"; position: absolute; top: -9px; right: -6px; background: #ffd400; color: #111; font: 700 10px/1 var(--font-body); padding: 3px 4px; border-radius: 4px; }
+.plat.unknown { background: transparent; color: var(--muted); border: 2px dashed var(--line); }
 
-.card.gone { background: transparent; border-style: dashed; }
+.card.gone { border-style: dashed; }
 .card.gone .badge, .card.gone .dest { opacity: .55; }
-.card.gone .plat, .card.gone .plat.changed { background: var(--surface); color: var(--muted); border-color: var(--muted); }
-.card.liv.gone .plat { background: #f4f4f4; color: #777777; border-color: #999999; }
-@media (prefers-color-scheme: dark) { .card.liv.gone { filter: brightness(.55); } }
+.card.gone .plat { opacity: .45; }
 
 .now-line { display: flex; align-items: center; gap: 10px; color: var(--accent); font: 600 11px/1 var(--font-body); letter-spacing: .1em; text-transform: uppercase; padding: 4px 2px; flex: none; }
 .now-line::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--accent); flex: none; }
 .now-line::after { content: ""; flex: 1; height: 2px; background: var(--accent); }
 .now-line span { order: 0; }
 
-/* Livery cards: fixed colours, the same in light and dark mode, because a livery doesn't change. */
-.liv { background: #ffffff; color: #111111; border-color: #d9d9d9; }
-.liv .meta, .liv .tripinfo { color: #555555; }
-.liv .tripinfo b { color: #111111; }
-.liv .big.countdown, .liv .big.now, .liv .delay { color: #d8232a; }
-.liv .big.gone { color: #666666; }
-.liv .plat { background: #ffffff; color: #111111; border-color: #111111; }
-.liv .plat.changed { background: #d8232a; color: #ffffff; border-color: #d8232a; }
-.card.liv.gone { background: #f4f4f4; }
-/* Léman Express: white body with a sweep of blue and red behind the platform. */
-.card.liv-lex { column-gap: 40px; }
-.card.liv-lex::before {
-  content: ""; position: absolute; top: -12px; bottom: -12px; right: 40px; width: 70px; transform: skewX(-22deg);
-  background: linear-gradient(90deg, #1f4e9c 0 30%, #ffffff 30% 40%, #e30613 40% 72%, #ffffff 72% 80%, #1f4e9c 80%);
-}
-.card.liv-lex::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: linear-gradient(90deg, #1f4e9c, #e30613); }
+/* Léman Express and RE 33: same card, with a livery band along the bottom and a livery-coloured badge. */
+.card.liv { padding-bottom: 17px; }
+.card.liv::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 5px; }
+.card.liv-lex::after { background: repeating-linear-gradient(115deg, #1f4e9c 0 30px, transparent 30px 34px, #e30613 34px 64px, transparent 64px 68px); }
+.card.liv-re33::after { background: repeating-linear-gradient(90deg, #3a3a3a 0 46px, #d8232a 46px 54px); }
+.card.gone.liv::after { opacity: .45; }
 .liv-lex .badge { background: #1f4e9c; color: #ffffff; border-color: #1f4e9c; }
-/* RE 33 (SBB KISS double-deckers): white body, red cab, dark window band, red doors. */
-.card.liv-re33 { padding-left: 22px; padding-bottom: 16px; }
-.card.liv-re33::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 9px; background: #d8232a; }
-.card.liv-re33::after {
-  content: ""; position: absolute; left: 9px; right: 0; bottom: 0; height: 6px;
-  background: repeating-linear-gradient(90deg, #2f2f2f 0 46px, #d8232a 46px 54px);
-}
 .liv-re33 .badge { background: #d8232a; color: #ffffff; border-color: #d8232a; }
 
 .empty, .error { padding: 28px 18px; color: var(--muted); text-align: center; }
@@ -244,26 +225,20 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .hero h2 { grid-area: dest; margin: 0; font: 700 26px/1.15 var(--font-display); overflow-wrap: anywhere; }
 .hero h2 small { display: block; font: 500 14px/1.4 var(--font-body); color: var(--board-muted); margin-top: 2px; }
 .hero .when { grid-area: when; margin-top: 6px; }
-.hero .big { font-size: 52px; }
+.hero .big, .hero .big.countdown, .hero .big.now { font-size: 52px; color: var(--board-fg); }
 .hero .big.gone { font-size: 34px; color: var(--board-muted); }
 .hero .meta { color: var(--board-muted); font-size: 15px; }
-.hero .plat { grid-area: plat; align-self: start; min-height: 88px; background: transparent; color: var(--board-fg); border-color: var(--board-fg); }
-.hero .plat b { font-size: 40px; }
-.hero .plat.changed { background: var(--warn-bg); border-color: var(--warn-bg); color: #fff; }
+.hero .plat { grid-area: plat; align-self: start; width: 84px; height: 84px; border-radius: 10px; }
+.hero .plat b { font-size: 46px; }
+.hero .plat b.long { font-size: 24px; }
+.hero .plat.unknown { border-color: rgb(255 255 255 / .3); color: var(--board-muted); }
 .hero .status { grid-area: status; font-weight: 600; font-size: 14px; color: var(--board-muted); }
-.hero .status.bad { color: #ff6b6b; }
+.hero .status.bad { color: var(--board-fg); }
 .hero .status.good { color: var(--board-fg); }
-.hero.liv { background: #ffffff; color: #111111; border: 1px solid #d9d9d9; border-top: 0; padding-top: 30px; }
-.hero.liv .op, .hero.liv h2 small, .hero.liv .meta, .hero.liv .status { color: #555555; }
-.hero.liv .status.bad { color: #d8232a; }
-.hero.liv .status.good { color: #111111; }
-.hero.liv .big.gone { color: #666666; }
-.hero.liv .plat { color: #111111; border-color: #111111; }
-.hero.liv .plat.changed { background: #d8232a; border-color: #d8232a; color: #fff; }
-.hero.liv-lex::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 12px; background: repeating-linear-gradient(115deg, #1f4e9c 0 40px, #ffffff 40px 46px, #e30613 46px 86px, #ffffff 86px 92px); }
-.hero.liv-re33 { padding-left: 28px; }
-.hero.liv-re33::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 10px; background: #d8232a; }
-.hero.liv-re33::after { content: ""; position: absolute; left: 10px; right: 0; top: 0; height: 10px; background: repeating-linear-gradient(90deg, #2f2f2f 0 56px, #d8232a 56px 66px); }
+.hero.liv { border-top: 0; padding-top: 28px; }
+.hero.liv::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 10px; }
+.hero.liv-lex::before { background: repeating-linear-gradient(115deg, #1f4e9c 0 40px, #ffffff 40px 46px, #e30613 46px 86px, #ffffff 86px 92px); }
+.hero.liv-re33::before { background: repeating-linear-gradient(90deg, #4a4a4a 0 56px, #d8232a 56px 66px); }
 .dwatch { border: 0; background: var(--accent); color: var(--accent-fg); border-radius: 12px; padding: 13px; font-weight: 600; font-size: 16px; }
 .dwatch.on { background: var(--surface); color: var(--accent); border: 1.5px solid var(--accent); }
 .sect { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 10px; min-width: 0; }
@@ -282,19 +257,24 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .tinfo .credit { color: var(--muted); font-size: 11.5px; }
 .tinfo .credit a { color: inherit; }
 .stops { list-style: none; margin: 0; padding: 0; }
-.stops li { position: relative; display: grid; grid-template-columns: 50px 14px minmax(0, 1fr) auto; gap: 0 10px; align-items: center; padding: 7px 0; }
-.stops li::before { content: ""; position: absolute; left: 66px; top: 0; bottom: 0; width: 2px; background: var(--line); }
-.stops li:first-child::before { top: 50%; }
+.stops li { position: relative; display: grid; grid-template-columns: 44px 44px 14px minmax(0, 1fr) 34px; gap: 0 8px; align-items: center; padding: 7px 0; }
+.stops li::before { content: ""; position: absolute; left: 111px; top: 0; bottom: 0; width: 2px; background: var(--line); }
+.stops li:nth-child(2)::before { top: 50%; }
 .stops li:last-child::before { bottom: 50%; }
-.stops .t { font: 600 14px/1.2 var(--font-mono); font-variant-numeric: tabular-nums; }
-.stops .t .delay { display: block; margin: 0; font: 700 11.5px/1.2 var(--font-body); }
+.stops li.cols { padding: 0 0 6px; font: 600 10.5px/1.2 var(--font-body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.stops li.cols::before { display: none; }
+.stops li.cols span:last-child { text-align: center; }
+.stops .t { font: 600 13.5px/1.2 var(--font-mono); font-variant-numeric: tabular-nums; }
+.stops .t .delay { display: table; margin: 3px 0 0; font-size: 10.5px; padding: 2px 4px; }
 .stops .pt { position: relative; z-index: 1; justify-self: center; width: 10px; height: 10px; border-radius: 50%; background: var(--surface); border: 2px solid var(--muted); }
 .stops .n { min-width: 0; overflow-wrap: anywhere; }
-.stops .pl { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+.stops .sp { justify-self: center; min-width: 28px; height: 26px; padding: 0 4px; display: grid; place-items: center; background: #2d327d; color: #fff; border-radius: 5px; font: 700 14px/1 var(--font-body); }
+.stops .sp.changed { box-shadow: 0 0 0 2px #ffd400; }
 .stops li.end .pt { background: var(--fg); border-color: var(--fg); width: 12px; height: 12px; }
 .stops li.end .n { font-weight: 600; }
-.stops li.past { color: var(--muted); }
+.stops li.past .t, .stops li.past .n { color: var(--muted); }
 .stops li.past .pt { background: var(--muted); border-color: var(--muted); }
+.stops .key { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
 .legh { display: flex; align-items: center; gap: 10px; font-weight: 600; }
 .legh .badge { font-size: 13px; padding: 4px 7px; }
 .change { background: var(--bg); border-radius: 10px; padding: 9px 12px; font-size: 14px; color: var(--muted); }
@@ -327,12 +307,12 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 }
 
 @media (min-width: 600px) {
-  .card { grid-template-columns: minmax(0, 1fr) 72px; padding: 14px 14px 14px 18px; }
+  .card { grid-template-columns: minmax(0, 1fr) 60px; padding: 14px 14px 14px 18px; }
   .big { font-size: 34px; }
 }
 @media (max-width: 380px) {
   .big { font-size: 26px; }
-  .hero .big { font-size: 44px; }
+  .hero .big, .hero .big.countdown, .hero .big.now { font-size: 44px; }
   .facts dd { font-size: 17px; }
 }
 @media (prefers-reduced-motion: no-preference) {
@@ -514,6 +494,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     const st = p.station || p.location || {};
     const d = timing(p, "departureTimestamp", "departure"), a = timing(p, "arrivalTimestamp", "arrival");
     return { name: st.name || "", dep: d.planned, depX: d.expected, arr: a.planned, arrX: a.expected,
+             depDelay: d.planned != null ? d.delay : 0, arrDelay: a.planned != null ? a.delay : 0,
              delay: Math.max(d.planned != null ? d.delay : 0, a.planned != null ? a.delay : 0), ...platformOf(p) };
   }
 
@@ -524,8 +505,12 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     // The route list starts after this station; put this station first.
     const here = stopOf(stop);
     if (here && here.name && (!stops.length || stops[0].name !== here.name)) stops.unshift(here);
+    const last = stops.length > 1 ? stops[stops.length - 1] : null;
     return {
       ...t, ...platformOf(stop), ...trainFields(j, t.planned),
+      arr: last ? last.arr : null, arrX: last ? last.arrX : null, arrDelay: last ? last.arrDelay : 0,
+      arrName: last ? last.name : "",
+      dur: last && last.arr && t.planned ? minutesText((last.arr - t.planned) / 60) : "",
       key: [t.planned, j.category, j.number, j.to].join("|"),
       to: j.to || "",
       stops,
@@ -533,6 +518,10 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     };
   }
 
+  function minutesText(m) {
+    m = Math.round(m); if (!(m > 0)) return "";
+    return m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")}` : `${m} min`;
+  }
   function duration(d) {   // "00d02:27:00"
     const m = /(\d+)d(\d+):(\d+)/.exec(d || ""); if (!m) return "";
     const h = +m[1] * 24 + +m[2], min = +m[3];
@@ -687,8 +676,8 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
   function platBox(j) {
     const p = el("span", "plat" + (j.platformChanged ? " changed" : "") + (j.platform ? "" : " unknown"));
     const txt = j.platform || "–";
-    p.append(el("small", "", j.platformChanged ? "Changed" : "Platform"), el("b", txt.length > 3 ? "long" : "", txt));
-    if (j.platformChanged) p.title = "Platform changed";
+    p.append(el("b", txt.length > 3 ? "long" : "", txt));
+    p.title = j.platform ? "Platform " + j.platform + (j.platformChanged ? " (changed)" : "") : "Platform not announced yet";
     return p;
   }
   const badge = (j, extra) => el("span", "badge" + (j.longDistance ? " long" : ""), j.line + (extra || ""));
@@ -730,15 +719,18 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     head.append(badge(j, j.more ? " " + j.more : ""), el("span", "dest", j.to));
     const w = el("div", "when"); fillWhen(w, j);
     r.append(head, w);
-    if (j.trip) {
+    if (j.arr != null || j.dur) {
       const ti = el("div", "tripinfo");
-      ti.append("Arr. ", el("b", "", hhmm(j.arrX ?? j.arr)));
-      if (j.arrDelay > 0) ti.append(delayEl(j.arrDelay));
-      ti.append(" · " + [j.dur, j.changeText].filter(Boolean).join(" · "));
+      if (j.dur) ti.append(el("b", "", j.dur));
+      if (j.arr != null) {
+        ti.append(j.dur ? " · arr. " : "Arr. ", el("b", "", hhmm(j.arrX ?? j.arr)));
+        if (j.arrDelay > 0) ti.append(delayEl(j.arrDelay));
+      }
+      if (j.trip) ti.append(" · " + j.changeText);
       r.append(ti);
     }
     r.append(platBox(j));
-    const label = () => `${j.line} to ${j.to}, ${w.dataset.label}, platform ${j.platform || "unknown"}${j.trip ? ", " + j.sub : ""}. Show details.`;
+    const label = () => `${j.line} to ${j.to}, ${w.dataset.label}, platform ${j.platform || "unknown"}${j.dur ? ", journey " + j.dur : ""}${j.arr != null ? ", arrives " + (j.trip ? j.arrName + " " : "") + hhmm(j.arrX ?? j.arr) : ""}${j.trip ? ", " + j.changeText : ""}. Show details.`;
     r.setAttribute("aria-label", label());
     timeCells.push([w, j, r, isGone(j), label]);
     const open = () => openDetail(j.key, r);
@@ -872,10 +864,12 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("detail").hidden) $("d-back").click(); });
   if (location.hash === "#train") history.replaceState(null, "", location.pathname + location.search);
 
-  function stopTime(s, isFirst) {
-    const planned = isFirst ? (s.dep ?? s.arr) : (s.arr ?? s.dep);
-    const t = el("span", "t", planned != null ? hhmm(planned) : "");
-    if (s.delay > 0) t.append(delayEl(s.delay));
+  // A stop time: the expected time (planned plus delay), with the delay underneath.
+  function stopTime(planned, expected, delay) {
+    const t = el("span", "t");
+    if (planned == null) return t;
+    t.textContent = hhmm(delay > 0 && expected != null ? expected : planned);
+    if (delay > 0) { const d = delayEl(delay); d.title = `${delay} min late, planned ${hhmm(planned)}`; t.append(d); }
     return t;
   }
   function stopList(stops, from, to) {
@@ -884,13 +878,27 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     let b = to ? stops.findIndex((s) => s.name === to) : stops.length - 1;
     if (a < 0) a = 0; if (b < a) b = stops.length - 1;
     const ul = el("ol", "stops");
-    stops.slice(a, b + 1).forEach((s, i, arr) => {
+    const head = el("li", "cols"); head.setAttribute("aria-hidden", "true");
+    head.append(el("span", "", "Arr."), el("span", "", "Dep."), el("span"), el("span", "", "Station"), el("span", "", "Pl."));
+    ul.append(head);
+    const part = stops.slice(a, b + 1);
+    let delayed = false;
+    part.forEach((s, i) => {
+      const first = i === 0, last = i === part.length - 1;
       const t = s.depX ?? s.arrX ?? s.dep ?? s.arr;
-      const li = el("li", (i === 0 || i === arr.length - 1 ? "end" : "") + (t != null && t < now() - 30 ? " past" : ""));
-      li.append(stopTime(s, i === 0), el("span", "pt"), el("span", "n", s.name), el("span", "pl", s.platform ? "Pl. " + s.platform : ""));
+      const li = el("li", (first || last ? "end" : "") + (t != null && t < now() - 30 ? " past" : ""));
+      const arr = first ? stopTime(null) : stopTime(s.arr, s.arrX, s.arrDelay);
+      const dep = last ? stopTime(null) : stopTime(s.dep, s.depX, s.depDelay);
+      if ((!first && s.arrDelay > 0) || (!last && s.depDelay > 0)) delayed = true;
+      const sp = el("span", s.platform ? "sp" + (s.platformChanged ? " changed" : "") : "", s.platform || "");
+      if (s.platform) sp.title = "Platform " + s.platform;
+      li.append(arr, dep, el("span", "pt"), el("span", "n", s.name), sp);
+      li.setAttribute("aria-label", `${s.name}${!first && s.arr ? ", arrives " + hhmm(s.arrX ?? s.arr) : ""}${!last && s.dep ? ", departs " + hhmm(s.depX ?? s.dep) : ""}${s.platform ? ", platform " + s.platform : ""}`);
       ul.append(li);
     });
-    return ul;
+    if (!delayed) return ul;
+    const wrap = el("div"); wrap.append(ul, el("p", "key", "Times include delays; the red tag shows how late."));
+    return wrap;
   }
 
   function renderDetail() {
@@ -910,10 +918,12 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     const w = el("div", "when"); fillWhen(w, j); detailCells.push([w, j]);
     const st = el("div", "status");
     function status() {
-      if (isGone(j)) { st.className = "status"; st.textContent = `Left ${hhmm(when(j))}` + (j.delay > 0 ? `, ${j.delay} min late` : ""); }
-      else if (j.delay > 0) { st.className = "status bad"; st.textContent = `Running ${j.delay} min late · expected ${hhmm(when(j))}`; }
-      else { st.className = "status good"; st.textContent = "On time"; }
-      if (j.platformChanged) st.textContent += ` · now platform ${j.platform}`;
+      st.replaceChildren();
+      if (isGone(j)) { st.className = "status"; st.append(`Left ${hhmm(when(j))}` + (j.delay > 0 ? `, ${j.delay} min late` : "")); }
+      else if (j.delay > 0) { st.className = "status bad"; st.append(`Running ${j.delay} min late · expected ${hhmm(when(j))}`); }
+      else { st.className = "status good"; st.append("On time"); }
+      if (j.platformChanged) st.append(` · platform changed to ${j.platform}`);
+      if (j.dur) st.append(` · journey ${j.dur}`);
     }
     status(); detailCells.push([null, j, status]);
     const p = platBox(j);
