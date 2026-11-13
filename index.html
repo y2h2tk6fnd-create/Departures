@@ -236,7 +236,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .tinfo .credit a { color: inherit; }
 /* Stop list: a line on the left, the station with its times underneath, the platform on the right. */
 .stops { list-style: none; margin: 0; padding: 0; }
-.stops li { position: relative; display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 0 12px; align-items: center; padding: 8px 0; min-height: 56px; }
+.stops li { position: relative; display: grid; grid-template-columns: 24px minmax(0, 1fr) auto 36px; gap: 0 12px; align-items: center; padding: 9px 0; min-height: 60px; }
 .stops li::before { content: ""; position: absolute; left: 11px; top: 0; bottom: 0; width: 2px; background: var(--line); }
 .stops li:first-child::before { top: 50%; }
 .stops li:last-child::before { bottom: 50%; }
@@ -246,19 +246,21 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .stops li.end .pt { width: 14px; height: 14px; border-color: var(--fg); background: var(--fg); }
 .stops li.mine .pt { width: 16px; height: 16px; border: 4px solid var(--fg); background: var(--surface); }
 .stops li.past .pt { background: var(--muted); border-color: var(--muted); }
-.stops .st { min-width: 0; display: grid; gap: 2px; }
-.stops .n { font-size: 15.5px; font-weight: 500; line-height: 1.25; overflow-wrap: anywhere; }
+.stops .st { min-width: 0; display: grid; gap: 3px; }
+.stops .n { font-size: 17px; font-weight: 500; line-height: 1.25; overflow-wrap: anywhere; }
 .stops li.mine .n, .stops li.end .n { font-weight: 700; }
-.stops .tm { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; }
-.stops .tm b { color: var(--fg); font-weight: 600; }
+.stops .tm { display: grid; gap: 3px; justify-items: end; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.stops .tm span { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12.5px; }
+.stops .tm b { color: var(--fg); font: 600 16px/1.15 var(--font-body); font-variant-numeric: tabular-nums; min-width: 44px; text-align: right; }
 .stops .tm .delay { margin: 0; font-size: 11px; padding: 2px 4px; }
 .stops li.past .n, .stops li.past .tm b { color: var(--muted); }
-.stops .mytag { display: inline-block; margin-left: 8px; padding: 1px 6px; border-radius: 4px; border: 1.5px solid var(--fg); font: 700 10px/1.3 var(--font-body); letter-spacing: .06em; text-transform: uppercase; vertical-align: 2px; }
-.stops .sp { min-width: 30px; height: 28px; padding: 0 5px; display: grid; place-items: center; background: #2d327d; color: #fff; border-radius: 5px; font: 700 15px/1 var(--font-body); }
+.stops .mytag { justify-self: start; margin: 0; padding: 1px 6px; border-radius: 4px; border: 1.5px solid var(--fg); font: 700 10px/1.3 var(--font-body); letter-spacing: .06em; text-transform: uppercase; vertical-align: 2px; }
+.stops .sp { justify-self: end; min-width: 32px; height: 30px; padding: 0 5px; display: grid; place-items: center; background: #2d327d; color: #fff; border-radius: 5px; font: 700 15px/1 var(--font-body); }
 .stops .sp.changed { box-shadow: 0 0 0 2px #ffd400; }
+.stops li.past .sp { opacity: .5; }
 .stops .tr { position: relative; z-index: 2; justify-self: center; width: 20px; height: 20px; border-radius: 50%; background: var(--accent); border: 3px solid var(--surface); box-shadow: 0 0 0 2px var(--accent); }
 .stops li.pos { min-height: 34px; padding: 2px 0; }
-.stops li.pos .ptext { font-size: 13px; font-weight: 600; }
+.stops li.pos .ptext { grid-column: 2 / 5; font-size: 14px; font-weight: 600; }
 .stops li.pos .ptext span { font-weight: 400; color: var(--muted); }
 .posline { margin: 0; display: flex; gap: 12px; align-items: center; font-weight: 600; font-size: 15.5px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 .posline::before { content: ""; flex: none; width: 12px; height: 12px; margin: 0 6px; border-radius: 50%; background: var(--accent); }
@@ -869,13 +871,23 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     const plan = f.state === "ok" && f.info.route && f.info.route.length > 1 ? f.info.route : null;
     if (!plan) return { ...fallback, why: "none" };
     const k = `${t.evu}|${t.date}|${t.trainNo}`;
+    if (t.stops) withPlatforms(t.stops, plan);
     const r = liveRoutes.get(k);
     if (!r || (r.state !== "loading" && Date.now() - r.at > 60000)) fetchLiveRoute(k, t, plan, r);
     const live = liveRoutes.get(k);
-    if (live && live.stops) return { stops: live.stops, full: true, live: true };
+    if (live && live.stops) return { stops: withPlatforms(live.stops, plan), full: true, live: true };
     const stops = plan.filter((p) => p.name).map((p) => ({ name: p.name, arr: p.arr, dep: p.dep, arrX: null, depX: null,
       arrDelay: 0, depDelay: 0, delay: 0, platform: p.platform, platformChanged: false }));
     return stops.length > 1 ? { stops, full: true, loading: !live || live.state === "loading" } : { ...fallback, why: "none" };
+  }
+  // The live data only has a platform for some stops; the formation data has the planned one for each.
+  function withPlatforms(stops, plan) {
+    for (const s of stops) {
+      if (s.platform) continue;
+      const p = plan.find((x) => (x.name && x.name === s.name) || (s.dep != null && x.dep === s.dep) || (s.arr != null && x.arr === s.arr));
+      if (p && p.platform) s.platform = p.platform;
+    }
+    return stops;
   }
   async function fetchLiveRoute(k, t, plan, prev) {
     liveRoutes.set(k, { ...(prev || {}), state: "loading", at: Date.now() });
@@ -965,13 +977,13 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
         const tm = el("span", "tm");
         const part = (label, planned, expected, delay) => {
           if (planned == null) return;
-          const x = el("span"); x.append(label + " ", el("b", "", hhmm(delay > 0 && expected != null ? expected : planned)));
+          const x = el("span");
+          if (delay > 0) { const c = delayEl(delay); c.title = `${delay} min late`; x.append(c); delayed = true; }
+          x.append(label, el("b", "", hhmm(delay > 0 && expected != null ? expected : planned)));
           tm.append(x);
         };
         if (!first) part("arr", s.arr, s.arrX, s.arrDelay);
         if (!last) part("dep", s.dep, s.depX, s.depDelay);
-        const d = last ? s.arrDelay : s.depDelay || (!first ? s.arrDelay : 0);
-        if (d > 0) { const c = delayEl(d); c.title = `${d} min late`; tm.append(c); delayed = true; }
         return tm;
       };
       const posRow = (next) => {
@@ -991,13 +1003,12 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
         const cls = [first || last ? "end" : "", past ? "past" : "", i === a || i === b ? "mine" : ""];
         const li = el("li", cls.filter(Boolean).join(" "));
         const st = el("span", "st");
-        const n = el("span", "n", s.name);
-        if (i === a) n.append(el("span", "mytag", tags[0]));
-        if (i === b) n.append(el("span", "mytag", tags[1]));
-        st.append(n, times(s, first, last));
+        st.append(el("span", "n", s.name));
+        if (i === a) st.append(el("span", "mytag", tags[0]));
+        if (i === b) st.append(el("span", "mytag", tags[1]));
         const sp = el("span", s.platform ? "sp" + (s.platformChanged ? " changed" : "") : "", s.platform || "");
         if (s.platform) sp.title = "Platform " + s.platform;
-        li.append(el("span", here ? "tr" : "pt"), st, sp);
+        li.append(el("span", here ? "tr" : "pt"), st, times(s, first, last), sp);
         li.setAttribute("aria-label", `${s.name}${!first && s.arr ? ", arrives " + hhmm(s.arrX ?? s.arr) : ""}${!last && s.dep ? ", departs " + hhmm(s.depX ?? s.dep) : ""}${s.platform ? ", platform " + s.platform : ""}${here ? ", the train is here" : past ? ", passed" : ""}`);
         ul.append(li);
         if (pos.kind === "between" && i === pos.i) ul.append(posRow(pos.next));
