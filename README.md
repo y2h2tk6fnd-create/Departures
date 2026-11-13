@@ -14,7 +14,7 @@ Open the link above in Safari, tap **Share → Add to Home Screen**, then **Add*
 - **To** is optional. Fill it in to see the next trains from one station to the other, with arrival time, journey time and any changes. Clear it with × to go back to the departure board, or swap the two with ⇅.
 - Both fields suggest stations as you type. Tap a field to see your **four most-used stations**.
 - **Train / Tram / Bus / Boat / Cableway** choose what's shown. It starts with trains only.
-- **Tap a train** to open its page: the countdown, platform and delay in large type, the train model with a photo, the number of cars and seats, and the whole line from where the train started to where it ends. A red marker shows **where the train is right now** (at a station, or between two), with a line like "1 stop before Genève". Every stop shows its arrival and departure time (including delays) and platform; your station is tagged, and on a From → To trip so are the stops where you board and get off.
+- **Tap a train** to open its page: the countdown, platform and delay in large type, the train model with a photo, the number of cars and seats, and the whole line from where the train started to where it ends. A red marker shows **where the train is right now** (at a station, or between two), with a line like "1 stop before Genève". Every stop shows its arrival and departure time (including delays) and platform; your station has a ring on the line; on a From → To trip, your part of the line is dotted. The first and last stations are shown as a bar.
 - **Scroll the board up** to see trains that left in the last hour, marked **Departed**. A red "Now" line separates them from upcoming trains.
 
 On the board, each card shows:
