@@ -194,5 +194,54 @@
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:ADLER_oberhalb_von_Brienz.jpg",
   "file": "File:ADLER oberhalb von Brienz.jpg"
+ },
+ "zbFink": {
+  "src": "trains/zbFink.jpg",
+  "credit": "Moliva",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:ZB_ABeh_160_004_Stans_20250717.jpg",
+  "file": "File:ZB ABeh 160 004 Stans 20250717.jpg"
+ },
+ "zbSpatz": {
+  "src": "trains/zbSpatz.jpg",
+  "credit": "Sandro Flückiger",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Zb_ABe_130_007_Ennethorw.jpg",
+  "file": "File:Zb ABe 130 007 Ennethorw.jpg"
+ },
+ "zbLex": {
+  "src": "trains/zbLex.jpg",
+  "credit": "Zentralbahn",
+  "license": "Public domain",
+  "source": "https://commons.wikimedia.org/wiki/File:Luzern-Interlaken_Express_am_Lungerersee.jpeg",
+  "file": "File:Luzern-Interlaken Express am Lungerersee.jpeg"
+ },
+ "rhb": {
+  "src": "trains/rhb.jpg",
+  "credit": "Kabelleger / David Gubler (http://www.bahnbilder.ch)",
+  "license": "CC BY-SA 3.0",
+  "source": "https://commons.wikimedia.org/wiki/File:RhB_ABe_8-12_Allegra_between_Lagalb_and_Ospizio_Bernina.jpg",
+  "file": "File:RhB ABe 8-12 Allegra between Lagalb and Ospizio Bernina.jpg"
+ },
+ "tpf": {
+  "src": "trains/tpf.jpg",
+  "credit": "Remontees",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Tpf-rabe-527-RE-Bern.jpg",
+  "file": "File:Tpf-rabe-527-RE-Bern.jpg"
+ },
+ "gtw520": {
+  "src": "trains/gtw520.jpg",
+  "credit": "Smiley.toerist",
+  "license": "CC BY-SA 3.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Beinwil_am_See_station.jpg",
+  "file": "File:Beinwil am See station.jpg"
+ },
+ "ter": {
+  "src": "trains/ter.jpg",
+  "credit": "Smiley.toerist",
+  "license": "CC BY-SA 3.0",
+  "source": "https://commons.wikimedia.org/wiki/File:TER_dubbeldektrein_in_Gen%C3%A8ve_Cornavin.JPG",
+  "file": "File:TER dubbeldektrein in Genève Cornavin.JPG"
  }
 }

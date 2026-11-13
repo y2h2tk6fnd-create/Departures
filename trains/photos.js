@@ -60,6 +60,12 @@ window.TRAIN_PHOTOS = {
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:SBB_RABe_501_030_%22Lambarda%22_in_Z%C3%BCrich_HB_(2026).jpg"
  },
+ "gtw520": {
+  "src": "trains/gtw520.jpg",
+  "credit": "Smiley.toerist",
+  "license": "CC BY-SA 3.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Beinwil_am_See_station.jpg"
+ },
  "ic2000": {
   "src": "trains/ic2000.jpg",
   "credit": "Kabelleger / David Gubler (http://www.bahnbilder.ch)",
@@ -138,11 +144,23 @@ window.TRAIN_PHOTOS = {
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:Bonneville_-_74130_-_2023.06.05_-_L%C3%A9man_Express_-_SNCF_-_Alstom_R%C3%A9giolis_Z_31500_-_31523_%C2%A9_Anthony_Levrot.jpg"
  },
+ "rhb": {
+  "src": "trains/rhb.jpg",
+  "credit": "Kabelleger / David Gubler (http://www.bahnbilder.ch)",
+  "license": "CC BY-SA 3.0",
+  "source": "https://commons.wikimedia.org/wiki/File:RhB_ABe_8-12_Allegra_between_Lagalb_and_Ospizio_Bernina.jpg"
+ },
  "sob526": {
   "src": "trains/sob526.jpg",
   "credit": "SOB RABe 526",
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:SOB_RABe_526_001_Biberbrugg.jpg"
+ },
+ "ter": {
+  "src": "trains/ter.jpg",
+  "credit": "Smiley.toerist",
+  "license": "CC BY-SA 3.0",
+  "source": "https://commons.wikimedia.org/wiki/File:TER_dubbeldektrein_in_Gen%C3%A8ve_Cornavin.JPG"
  },
  "thurbo": {
   "src": "trains/thurbo.jpg",
@@ -156,6 +174,12 @@ window.TRAIN_PHOTOS = {
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:TILO_-_2_gekoppelte_ETR_524_(Stadler_Flirt)_in_Biasca_(2026).jpg"
  },
+ "tpf": {
+  "src": "trains/tpf.jpg",
+  "credit": "Remontees",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Tpf-rabe-527-RE-Bern.jpg"
+ },
  "traverso": {
   "src": "trains/traverso.jpg",
   "credit": "JoachimKohler-HB",
@@ -167,5 +191,23 @@ window.TRAIN_PHOTOS = {
   "credit": "Zb Zentralbahn AG",
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:ADLER_oberhalb_von_Brienz.jpg"
+ },
+ "zbFink": {
+  "src": "trains/zbFink.jpg",
+  "credit": "Moliva",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:ZB_ABeh_160_004_Stans_20250717.jpg"
+ },
+ "zbLex": {
+  "src": "trains/zbLex.jpg",
+  "credit": "Zentralbahn",
+  "license": "Public domain",
+  "source": "https://commons.wikimedia.org/wiki/File:Luzern-Interlaken_Express_am_Lungerersee.jpeg"
+ },
+ "zbSpatz": {
+  "src": "trains/zbSpatz.jpg",
+  "credit": "Sandro Flückiger",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Zb_ABe_130_007_Ennethorw.jpg"
  }
 };
