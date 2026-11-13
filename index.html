@@ -14,7 +14,7 @@
 <title>Departure Board</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <style>
 /* Layout: search on top, then a board of departure cards that scrolls on its own
    (up for trains that already left), and a full-screen page with everything about one train. */
@@ -36,7 +36,7 @@
   --warn-fg: #ffffff;
   --font-display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
   --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-mono: "IBM Plex Sans", system-ui, -apple-system, sans-serif;   /* numbers: tabular figures, plain zeros */
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -144,7 +144,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .badge.long { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
 
 .when { display: flex; align-items: baseline; gap: 4px 10px; flex-wrap: wrap; min-width: 0; }
-.big { font: 700 30px/1 var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.big { font: 700 32px/1 var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
 .big.countdown { color: var(--fg); }
 .big.gone { font: 700 22px/1.15 var(--font-display); color: var(--muted); letter-spacing: .01em; }
 .big.now { color: var(--fg); }
@@ -190,7 +190,13 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
   position: fixed; inset: 0; z-index: 30; background: var(--bg); overflow-y: auto; overscroll-behavior: contain;
   padding: max(8px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(28px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
 }
-.detail .inner { max-width: 640px; margin: 0 auto; display: grid; gap: 12px; }
+.detail .inner { position: relative; z-index: 1; max-width: 640px; margin: 0 auto; display: grid; gap: 12px; }
+/* Photo banner: the train across the top, fading into the page; the countdown card overlaps its bottom. */
+.banner { position: absolute; z-index: 0; left: 0; right: 0; top: 0; height: calc(300px + env(safe-area-inset-top, 0px)); background: var(--board) center 55% / cover no-repeat; }
+.banner::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, rgb(0 0 0 / .5) 0%, rgb(0 0 0 / 0) 26%, rgb(0 0 0 / 0) 42%, var(--bg) 100%); }
+.detail.has-banner #d-body { margin-top: 168px; }
+.detail.has-banner .back { color: #ffffff; background: rgb(0 0 0 / .45); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border-radius: 999px; padding: 7px 14px 7px 6px; }
+.detail.has-banner .hero { box-shadow: 0 12px 32px rgb(0 0 0 / .35); }
 .dbar { display: flex; align-items: center; gap: 8px; min-height: 44px; }
 .back { border: 0; background: none; color: var(--accent); font-weight: 600; font-size: 17px; padding: 8px 6px 8px 0; display: inline-flex; align-items: center; gap: 4px; }
 .back::before { content: ""; width: 10px; height: 10px; border-left: 2.5px solid currentColor; border-bottom: 2.5px solid currentColor; transform: rotate(45deg); margin: 0 4px 0 4px; }
@@ -231,7 +237,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 4px 0 0; }
 .facts div { background: var(--bg); border-radius: 10px; padding: 8px 10px; }
 .facts dt { font: 600 10.5px/1.2 var(--font-body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-.facts dd { margin: 2px 0 0; font: 700 20px/1.1 var(--font-mono); }
+.facts dd { margin: 2px 0 0; font: 700 20px/1.1 var(--font-mono); font-variant-numeric: tabular-nums; }
 .tinfo .credit { color: var(--muted); font-size: 11.5px; }
 .tinfo .credit a { color: inherit; }
 /* Stop list: a line on the left, the station with its times underneath, the platform on the right. */
@@ -290,7 +296,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .settings ol { margin: 0; padding-left: 20px; color: var(--muted); font-size: 14px; display: grid; gap: 4px; }
 .settings a { color: var(--accent); }
 .settings .row { display: flex; gap: 8px; flex-wrap: wrap; }
-.settings input { flex: 1 1 220px; min-width: 0; padding: 9px 11px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); font: 14px var(--font-mono); }
+.settings input { flex: 1 1 220px; min-width: 0; padding: 9px 11px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); font: 14px ui-monospace, "SF Mono", Menlo, monospace; }
 .settings button { border: 0; background: var(--accent); color: var(--accent-fg); border-radius: 8px; padding: 9px 14px; font-weight: 600; }
 .settings button.secondary { background: none; color: var(--accent); border: 1px solid var(--line); }
 .settings .status { font-size: 13px; font-weight: 600; }
@@ -388,6 +394,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 </div>
 
 <section class="detail" id="detail" role="dialog" aria-modal="true" aria-labelledby="d-title" hidden>
+  <div class="banner" id="d-banner" hidden></div>
   <div class="inner">
     <div class="dbar"><button class="back" id="d-back">Board</button></div>
     <div id="d-body"></div>
@@ -792,7 +799,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
   }
 
   // ---------- Train types ----------
-  function trainInfo(t, forText) {
+  function trainInfo(t, forText, inBanner) {
     const box = el("div", "tinfo");
     if (forText) box.append(el("span", "for", forText));
     if (!TT || !TT.hasKey()) {
@@ -807,7 +814,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
       return box;
     }
     const info = r.info, m = TT.MODELS[info.main], photo = TT.PHOTOS[info.main];
-    if (photo) {
+    if (photo && !inBanner) {
       const img = el("img"); img.src = photo.src; img.alt = `${m.name}, ${m.detail}`;
       box.append(img);
     }
@@ -821,7 +828,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     }
     if (facts.childElementCount) box.append(facts);
     if (photo) {
-      const c = el("span", "credit", "Photo: " + photo.credit + ", ");
+      const c = el("span", "credit", (inBanner ? "Photo at the top: " : "Photo: ") + photo.credit + ", ");
       const a = el("a", "", photo.license); a.href = photo.source; a.target = "_blank"; a.rel = "noopener";
       c.append(a, ", via Wikimedia Commons"); box.append(c);
     }
@@ -1035,6 +1042,19 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     if (!state.detail) return;
     const j = findRow(state.detail) || detailSnap; detailSnap = j;
     const body = $("d-body"); body.replaceChildren(); detailCells.length = 0; routeCells.length = 0;
+    const rides = j.trip && j.legs ? j.legs.filter((l) => !l.walk) : [j];
+    // Banner: a photo of the (first) train, if its model is known.
+    let photo = null;
+    if (TT && TT.hasKey() && rides[0] && rides[0].trainNo && rides[0].evu) {
+      const r = TT.lookup(rides[0]);
+      if (r && r.state === "ok" && !r.info.unknown) photo = TT.PHOTOS[r.info.main] || null;
+    }
+    const banner = $("d-banner");
+    banner.hidden = !photo;
+    banner.style.backgroundImage = photo ? `url("${photo.src}")` : "";
+    banner.setAttribute("role", "img");
+    banner.setAttribute("aria-label", photo ? "Photo of the train" : "");
+    $("detail").classList.toggle("has-banner", !!photo);
     const inner = el("div", "inner"); inner.style.padding = "0";
 
     // Hero: line, destination, the big time and the platform.
@@ -1087,8 +1107,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 
     // Train type and photo (one per train on a trip with changes).
     const ts = el("section", "sect"); ts.append(el("h3", "", "The train"));
-    const rides = j.trip && j.legs ? j.legs.filter((l) => !l.walk) : [j];
-    rides.forEach((t) => ts.append(trainInfo(t, rides.length > 1 ? `${t.line} towards ${t.to}` : "")));
+    rides.forEach((t, i) => ts.append(trainInfo(t, rides.length > 1 ? `${t.line} towards ${t.to}` : "", i === 0 && !!photo)));
     inner.append(ts);
 
     // Route of this train (departure boards).
