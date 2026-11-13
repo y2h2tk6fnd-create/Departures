@@ -14,8 +14,8 @@ Open the link above in Safari, tap **Share → Add to Home Screen**, then **Add*
 - **To** is optional. Fill it in to see the next trains from one station to the other, with arrival time, journey time and any changes. Clear it with × to go back to the departure board, or swap the two with ⇅.
 - Both fields suggest stations as you type. Tap a field to see your **four most-used stations**.
 - **Train / Tram / Bus / Boat / Cableway** choose what's shown. It starts with trains only.
-- **Tap a train** to open its page: the countdown, platform and delay in large type, the train model with a photo, the number of cars and seats, every stop with its arrival and departure time (including delays) and platform, and on a trip each change. Tap **Watch this train** there to pin it to the top of the board with a live countdown (also shown in the browser tab title).
-- **Scroll the board up** to see trains that left in the last hour, marked **Departed**. A red "Now" line separates them from upcoming trains, and **Back to now** jumps back.
+- **Tap a train** to open its page: the countdown, platform and delay in large type, the train model with a photo, the number of cars and seats, and the whole line from where the train started to where it ends. A red marker shows **where the train is right now** (at a station, or between two), with a line like "1 stop before Genève". Every stop shows its arrival and departure time (including delays) and platform; your station is tagged, and on a From → To trip so are the stops where you board and get off.
+- **Scroll the board up** to see trains that left in the last hour, marked **Departed**. A red "Now" line separates them from upcoming trains.
 
 On the board, each card shows:
 
@@ -37,7 +37,7 @@ All times are Swiss time, wherever you open the page.
 
 ## Train types and photos
 
-The board can show which train model runs each departure (FLIRT, Régiolis, FV-Dosto, KISS and so on), and each train's page shows a photo of it with the number of cars and seats. This uses SBB's Train Formation Service, which needs a free personal key:
+The board can show which train model runs each departure (FLIRT, Régiolis, FV-Dosto, KISS and so on), and each train's page shows a photo of it and its whole line, including the stops before yours with the number of cars and seats. This uses SBB's Train Formation Service, which needs a free personal key:
 
 1. Sign in at [api-manager.opentransportdata.swiss](https://api-manager.opentransportdata.swiss/) and copy your **Train Formation Service** key.
 2. In the app, tap **Settings**, paste the key and tap **Save key**.

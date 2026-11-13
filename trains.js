@@ -84,7 +84,23 @@
     return null;
   }
 
-  // Summarise a formation: the models in order, the main one, cars, seats and length.
+  // The train's whole route (all scheduled stops, origin first), from every vehicle's stop list.
+  const ts = (iso) => { const t = iso ? Date.parse(iso) : NaN; return Number.isFinite(t) ? t / 1000 : null; };
+  function routeOf(vehicles) {
+    const byStop = new Map();
+    for (const v of vehicles) for (const s of v.formationVehicleAtScheduledStops || []) {
+      const uic = s.stopPoint && s.stopPoint.uic; if (!uic) continue;
+      const st = s.stopTime || {};
+      const cur = byStop.get(uic) || { uic, name: "", arr: null, dep: null, platform: "" };
+      cur.name = cur.name || (s.stopPoint.name || "");
+      cur.arr = cur.arr ?? ts(st.arrivalTime); cur.dep = cur.dep ?? ts(st.departureTime);
+      cur.platform = cur.platform || (s.track || "");
+      byStop.set(uic, cur);
+    }
+    return [...byStop.values()].sort((a, b) => (a.dep ?? a.arr) - (b.dep ?? b.arr));
+  }
+
+  // Summarise a formation: the models in order, the main one, cars, seats, length and route.
   function summarise(data, evu) {
     const vehicles = [];
     for (const f of data.formations || []) for (const v of f.formationVehicles || []) vehicles.push(v);
@@ -104,8 +120,9 @@
       if ((m.numberVehicles || 0) > cars) { cars = m.numberVehicles || 0; seats = m.numberSeats || 0; length = m.length || 0; }
     }
     if (!cars) cars = vehicles.filter((v) => MODELS[classify(v, evu)]?.role !== "loco").length;
-    if (!main) return { unknown: true, raw: [...new Set(vehicles.map((v) => v.vehicleIdentifier?.typeCodeName).filter(Boolean))].slice(0, 3).join(", "), cars, seats, length };
-    return { main, models: units, loco, cars, seats, length: Math.round(length) };
+    const route = routeOf(vehicles);
+    if (!main) return { unknown: true, route, raw: [...new Set(vehicles.map((v) => v.vehicleIdentifier?.typeCodeName).filter(Boolean))].slice(0, 3).join(", "), cars, seats, length };
+    return { main, models: units, loco, cars, seats, length: Math.round(length), route };
   }
 
   // ---------- Formation service ----------
