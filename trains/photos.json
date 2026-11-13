@@ -71,10 +71,10 @@
  },
  "kiss512": {
   "src": "trains/kiss512.jpg",
-  "credit": "Kecko from Eastern Switzerland",
-  "license": "CC BY 2.0",
-  "source": "https://commons.wikimedia.org/wiki/File:SBB_IR-Dosto_-_RABe_512_(52078516652).jpg",
-  "file": "File:SBB IR-Dosto - RABe 512 (52078516652).jpg"
+  "credit": "Remontees",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Rabe-511-kiss-gare-annemasse2.jpg",
+  "file": "File:Rabe-511-kiss-gare-annemasse2.jpg"
  },
  "dtz": {
   "src": "trains/dtz.jpg",
@@ -180,5 +180,19 @@
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:Basel_SBB_Bahnhof_2022_3.jpg",
   "file": "File:Basel SBB Bahnhof 2022 3.jpg"
+ },
+ "sob526": {
+  "src": "trains/sob526.jpg",
+  "credit": "SOB RABe 526",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:SOB_RABe_526_001_Biberbrugg.jpg",
+  "file": "File:SOB RABe 526 001 Biberbrugg.jpg"
+ },
+ "zbAdler": {
+  "src": "trains/zbAdler.jpg",
+  "credit": "Zb Zentralbahn AG",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:ADLER_oberhalb_von_Brienz.jpg",
+  "file": "File:ADLER oberhalb von Brienz.jpg"
  }
 }

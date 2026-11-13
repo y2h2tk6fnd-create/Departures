@@ -92,9 +92,9 @@ window.TRAIN_PHOTOS = {
  },
  "kiss512": {
   "src": "trains/kiss512.jpg",
-  "credit": "Kecko from Eastern Switzerland",
-  "license": "CC BY 2.0",
-  "source": "https://commons.wikimedia.org/wiki/File:SBB_IR-Dosto_-_RABe_512_(52078516652).jpg"
+  "credit": "Remontees",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Rabe-511-kiss-gare-annemasse2.jpg"
  },
  "lotschberger": {
   "src": "trains/lotschberger.jpg",
@@ -138,6 +138,12 @@ window.TRAIN_PHOTOS = {
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:Bonneville_-_74130_-_2023.06.05_-_L%C3%A9man_Express_-_SNCF_-_Alstom_R%C3%A9giolis_Z_31500_-_31523_%C2%A9_Anthony_Levrot.jpg"
  },
+ "sob526": {
+  "src": "trains/sob526.jpg",
+  "credit": "SOB RABe 526",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:SOB_RABe_526_001_Biberbrugg.jpg"
+ },
  "thurbo": {
   "src": "trains/thurbo.jpg",
   "credit": "Matti Blume",
@@ -155,5 +161,11 @@ window.TRAIN_PHOTOS = {
   "credit": "JoachimKohler-HB",
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:SOB_RABe_526_105_Traverso_in_Kreuzlingen.jpg"
+ },
+ "zbAdler": {
+  "src": "trains/zbAdler.jpg",
+  "credit": "Zb Zentralbahn AG",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:ADLER_oberhalb_von_Brienz.jpg"
  }
 };
