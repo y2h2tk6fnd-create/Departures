@@ -234,41 +234,36 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .facts dd { margin: 2px 0 0; font: 700 20px/1.1 var(--font-mono); }
 .tinfo .credit { color: var(--muted); font-size: 11.5px; }
 .tinfo .credit a { color: inherit; }
+/* Stop list: a line on the left, the station with its times underneath, the platform on the right. */
 .stops { list-style: none; margin: 0; padding: 0; }
-.stops li { position: relative; display: grid; grid-template-columns: 44px 44px 14px minmax(0, 1fr) 34px; gap: 0 8px; align-items: center; padding: 7px 0; }
-.stops li::before { content: ""; position: absolute; left: 111px; top: 0; bottom: 0; width: 2px; background: var(--line); }
-.stops li:nth-child(2)::before { top: 50%; }
+.stops li { position: relative; display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 0 12px; align-items: center; padding: 8px 0; min-height: 56px; }
+.stops li::before { content: ""; position: absolute; left: 11px; top: 0; bottom: 0; width: 2px; background: var(--line); }
+.stops li:first-child::before { top: 50%; }
 .stops li:last-child::before { bottom: 50%; }
-.stops li.cols { padding: 0 0 6px; font: 600 10.5px/1.2 var(--font-body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-.stops li.cols::before { display: none; }
-.stops li.cols span:last-child { text-align: center; }
-.stops .t { font: 600 13.5px/1.2 var(--font-mono); font-variant-numeric: tabular-nums; }
-.stops .t .delay { display: table; margin: 3px 0 0; font-size: 10.5px; padding: 2px 4px; }
-.stops .pt { position: relative; z-index: 1; justify-self: center; width: 10px; height: 10px; border-radius: 50%; background: var(--surface); border: 2px solid var(--muted); }
-.stops .n { min-width: 0; overflow-wrap: anywhere; }
-.stops .sp { justify-self: center; min-width: 28px; height: 26px; padding: 0 4px; display: grid; place-items: center; background: #2d327d; color: #fff; border-radius: 5px; font: 700 14px/1 var(--font-body); }
-.stops .sp.changed { box-shadow: 0 0 0 2px #ffd400; }
-.stops li.end .pt { background: var(--fg); border-color: var(--fg); width: 12px; height: 12px; }
-.stops li.end .n { font-weight: 600; }
-.stops li.past .t, .stops li.past .n { color: var(--muted); }
-.stops li.past .pt { background: var(--muted); border-color: var(--muted); }
-.stops .key { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
-.stops li.past::before { background: var(--muted); }
-.stops li.out .n { font-size: 14px; }
-.stops li.out .t { font-size: 12.5px; }
-.stops li.out:not(.past) .n, .stops li.out:not(.past) .t { color: var(--muted); }
-.stops li.mine .n { font-weight: 700; }
-.stops .mytag { display: inline-block; margin-left: 6px; padding: 2px 6px; border-radius: 4px; background: var(--fg); color: var(--surface); font: 700 10px/1.2 var(--font-body); letter-spacing: .06em; text-transform: uppercase; vertical-align: 2px; }
-.stops .tr { position: relative; z-index: 2; justify-self: center; width: 20px; height: 20px; border-radius: 50%; background: var(--accent); border: 3px solid var(--surface); box-shadow: 0 0 0 2px var(--accent); }
-.stops li.here .n { font-weight: 700; }
-.stops li.here .n small { display: block; font-weight: 600; font-size: 12.5px; color: var(--accent); }
-.stops li.pos { padding: 6px 0; }
-.stops li.pos .ptext { grid-column: 4 / 6; font-weight: 600; font-size: 13.5px; }
-.stops li.pos .ptext small { display: block; font-weight: 400; color: var(--muted); font-size: 12.5px; }
+.stops li.past::before, .stops li.pos::before { background: var(--muted); }
 .stops li.pos::before { background: linear-gradient(var(--muted) 50%, var(--line) 50%); }
-.posline { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--bg); display: flex; gap: 10px; align-items: center; font-weight: 600; }
-.posline::before { content: ""; flex: none; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); }
-.posline small { display: block; font-weight: 400; color: var(--muted); }
+.stops .pt { position: relative; z-index: 1; justify-self: center; width: 12px; height: 12px; border-radius: 50%; background: var(--surface); border: 2px solid var(--muted); }
+.stops li.end .pt { width: 14px; height: 14px; border-color: var(--fg); background: var(--fg); }
+.stops li.mine .pt { width: 16px; height: 16px; border: 4px solid var(--fg); background: var(--surface); }
+.stops li.past .pt { background: var(--muted); border-color: var(--muted); }
+.stops .st { min-width: 0; display: grid; gap: 2px; }
+.stops .n { font-size: 15.5px; font-weight: 500; line-height: 1.25; overflow-wrap: anywhere; }
+.stops li.mine .n, .stops li.end .n { font-weight: 700; }
+.stops .tm { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; }
+.stops .tm b { color: var(--fg); font-weight: 600; }
+.stops .tm .delay { margin: 0; font-size: 11px; padding: 2px 4px; }
+.stops li.past .n, .stops li.past .tm b { color: var(--muted); }
+.stops .mytag { display: inline-block; margin-left: 8px; padding: 1px 6px; border-radius: 4px; border: 1.5px solid var(--fg); font: 700 10px/1.3 var(--font-body); letter-spacing: .06em; text-transform: uppercase; vertical-align: 2px; }
+.stops .sp { min-width: 30px; height: 28px; padding: 0 5px; display: grid; place-items: center; background: #2d327d; color: #fff; border-radius: 5px; font: 700 15px/1 var(--font-body); }
+.stops .sp.changed { box-shadow: 0 0 0 2px #ffd400; }
+.stops .tr { position: relative; z-index: 2; justify-self: center; width: 20px; height: 20px; border-radius: 50%; background: var(--accent); border: 3px solid var(--surface); box-shadow: 0 0 0 2px var(--accent); }
+.stops li.pos { min-height: 34px; padding: 2px 0; }
+.stops li.pos .ptext { font-size: 13px; font-weight: 600; }
+.stops li.pos .ptext span { font-weight: 400; color: var(--muted); }
+.posline { margin: 0; display: flex; gap: 12px; align-items: center; font-weight: 600; font-size: 15.5px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.posline::before { content: ""; flex: none; width: 12px; height: 12px; margin: 0 6px; border-radius: 50%; background: var(--accent); }
+.posline small { display: block; font-weight: 400; font-size: 13.5px; color: var(--muted); }
+.stops-key { font-size: 12px; color: var(--muted); margin: 0; }
 @media (prefers-reduced-motion: no-preference) {
   .stops .tr, .posline::before { animation: pulse 1.6s ease-out infinite; }
   @keyframes pulse { 0% { box-shadow: 0 0 0 2px var(--accent), 0 0 0 2px rgb(216 35 42 / .45); } 100% { box-shadow: 0 0 0 2px var(--accent), 0 0 0 12px rgb(216 35 42 / 0); } }
@@ -965,41 +960,47 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
       box.append(pl);
 
       const ul = el("ol", "stops");
-      const head = el("li", "cols"); head.setAttribute("aria-hidden", "true");
-      head.append(el("span", "", "Arr."), el("span", "", "Dep."), el("span"), el("span", "", "Station"), el("span", "", "Pl."));
-      ul.append(head);
-      const posRow = (text, small) => {
+      // "arr 07:36 · dep 07:38" (live times), with one delay tag for the stop.
+      const times = (s, first, last) => {
+        const tm = el("span", "tm");
+        const part = (label, planned, expected, delay) => {
+          if (planned == null) return;
+          const x = el("span"); x.append(label + " ", el("b", "", hhmm(delay > 0 && expected != null ? expected : planned)));
+          tm.append(x);
+        };
+        if (!first) part("arr", s.arr, s.arrX, s.arrDelay);
+        if (!last) part("dep", s.dep, s.depX, s.depDelay);
+        const d = last ? s.arrDelay : s.depDelay || (!first ? s.arrDelay : 0);
+        if (d > 0) { const c = delayEl(d); c.title = `${d} min late`; tm.append(c); delayed = true; }
+        return tm;
+      };
+      const posRow = (next) => {
         const li = el("li", "pos");
-        const tx = el("span", "ptext", text); if (small) tx.append(el("small", "", small));
-        li.append(el("span"), el("span"), el("span", "tr"), tx);
-        li.setAttribute("aria-label", "Train position: " + text + (small ? ", " + small : ""));
+        const m = Math.max(0, Math.ceil((pos.at - now()) / 60));
+        const tx = el("span", "ptext", "Train ");
+        tx.append(el("span", "", `· ${name(next)} ${m <= 0 ? "now" : "in " + m + " min"}`));
+        li.append(el("span", "tr"), tx);
+        li.setAttribute("aria-label", `The train is here, ${name(next)} ${m <= 0 ? "now" : "in " + m + " minutes"}`);
         return li;
       };
       let delayed = false;
       stops.forEach((s, i) => {
         const first = i === 0, last = i === stops.length - 1;
-        if (pos.kind === "before" && i === pos.i) ul.append(posRow(r.full ? "Train not departed yet" : "Train not here yet"));
         const past = pos.kind === "after" || i < pos.i || (pos.kind === "between" && i === pos.i);
         const here = pos.kind === "at" && pos.i === i;
-        const out = a >= 0 && (i < a || (b >= 0 && i > b));
-        const cls = [first || last ? "end" : "", past ? "past" : "", here ? "here" : "", out ? "out" : "", i === a || i === b ? "mine" : ""];
+        const cls = [first || last ? "end" : "", past ? "past" : "", i === a || i === b ? "mine" : ""];
         const li = el("li", cls.filter(Boolean).join(" "));
-        const arr = first ? stopTime(null) : stopTime(s.arr, s.arrX, s.arrDelay);
-        const dep = last ? stopTime(null) : stopTime(s.dep, s.depX, s.depDelay);
-        if ((!first && s.arrDelay > 0) || (!last && s.depDelay > 0)) delayed = true;
+        const st = el("span", "st");
         const n = el("span", "n", s.name);
         if (i === a) n.append(el("span", "mytag", tags[0]));
         if (i === b) n.append(el("span", "mytag", tags[1]));
-        if (here) n.append(el("small", "", "Train is here"));
+        st.append(n, times(s, first, last));
         const sp = el("span", s.platform ? "sp" + (s.platformChanged ? " changed" : "") : "", s.platform || "");
         if (s.platform) sp.title = "Platform " + s.platform;
-        li.append(arr, dep, el("span", here ? "tr" : "pt"), n, sp);
+        li.append(el("span", here ? "tr" : "pt"), st, sp);
         li.setAttribute("aria-label", `${s.name}${!first && s.arr ? ", arrives " + hhmm(s.arrX ?? s.arr) : ""}${!last && s.dep ? ", departs " + hhmm(s.depX ?? s.dep) : ""}${s.platform ? ", platform " + s.platform : ""}${here ? ", the train is here" : past ? ", passed" : ""}`);
         ul.append(li);
-        if (pos.kind === "between" && i === pos.i) {
-          const m = Math.max(0, Math.ceil((pos.at - now()) / 60));
-          ul.append(posRow("Train is here", `${name(pos.next)} ${m <= 0 ? "now" : "in " + m + " min"}`));
-        }
+        if (pos.kind === "between" && i === pos.i) ul.append(posRow(pos.next));
       });
       box.append(ul);
       const notes = [];
@@ -1008,7 +1009,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
       else if (!r.full && r.why === "nokey") notes.push("Earlier stops and the train's position before it reaches this station need your Train Formation Service key (Settings).");
       else if (!r.full) notes.push("Earlier stops aren't published for this train, so the list starts here.");
       else if (!r.live) notes.push("Live times for the whole line aren't available; positions use the timetable plus the current delay.");
-      for (const x of notes) box.append(el("p", "key", x));
+      for (const x of notes) box.append(el("p", "stops-key", x));
     };
     draw();
     routeCells.push(draw);
