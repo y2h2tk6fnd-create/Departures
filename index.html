@@ -14,11 +14,11 @@
 <title>Departure Board</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600;700&display=swap">
 <style>
-/* Layout: a station board. Pinned stations as tabs above, one dense row per departure, a "watched train" card on top. */
+/* Layout: search on top, then a board of departure cards that scrolls on its own
+   (up for trains that already left), and a full-screen page with everything about one train. */
 :root {
-  /* Black, red and white: a black board, red for what needs attention, white cards. */
   --bg: #f2f2f2;
   --surface: #ffffff;
   --line: #dcdcdc;
@@ -54,17 +54,21 @@ html, body { margin: 0; }
 body {
   background: var(--bg); color: var(--fg);
   font: 15px/1.45 var(--font-body);
+  height: 100vh; height: 100dvh; overflow-y: auto;
+  display: flex; flex-direction: column;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
-  padding-block: max(16px, env(safe-area-inset-top, 0px)) 40px;
+  padding-top: max(14px, env(safe-area-inset-top, 0px));
+  padding-bottom: max(14px, env(safe-area-inset-bottom, 0px));
 }
-.wrap { max-width: 860px; margin: 0 auto; display: grid; gap: 16px; }
+body.locked { overflow: hidden; }
+.wrap { width: 100%; max-width: 760px; margin: 0 auto; flex: 1 0 auto; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
 button, input, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; text-wrap: balance; }
+h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .updated { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 
 /* Trip search: From and To */
@@ -73,12 +77,12 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
   display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: stretch;
 }
 .fields { min-width: 0; }
-.field { position: relative; display: flex; align-items: center; gap: 10px; padding: 4px 12px 4px 14px; }
+.field { position: relative; display: flex; align-items: center; gap: 10px; padding: 2px 12px 2px 14px; }
 .field + .field { border-top: 1px solid var(--line); }
 .field .tag { width: 40px; flex: none; font: 600 11px/1 var(--font-body); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
 .field .dot { width: 10px; height: 10px; flex: none; border-radius: 50%; background: var(--fg); }
 .field.to .dot { background: var(--surface); border: 2.5px solid var(--accent); }
-.field input { flex: 1; min-width: 0; border: 0; background: none; font-size: 17px; font-weight: 500; padding: 11px 0; outline: none; }
+.field input { flex: 1; min-width: 0; border: 0; background: none; font-size: 17px; font-weight: 500; padding: 10px 0; outline: none; }
 .field input::placeholder { color: var(--muted); font-weight: 400; }
 .field .clear { border: 0; background: none; color: var(--muted); font-size: 20px; line-height: 1; padding: 4px 6px; border-radius: 6px; }
 .swap {
@@ -96,10 +100,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
 .suggest li .kind { color: var(--muted); font-size: 12px; white-space: nowrap; }
 .suggest li .kind.train { color: var(--accent); font-weight: 600; }
 .suggest li[aria-selected="true"], .suggest li[role="option"]:hover { background: var(--bg); }
-.empty .fix { margin-top: 12px; border: 1px solid var(--accent); color: var(--accent); background: none; border-radius: 8px; padding: 6px 12px; font-weight: 600; }
 
-/* Controls */
-.controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; }
 .chip {
   border: 1px solid var(--line); background: var(--surface); border-radius: 8px;
@@ -107,100 +108,204 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
 }
 .chip[aria-pressed="true"] { border-color: var(--fg); color: var(--surface); background: var(--fg); }
 
-/* Watched departure */
+/* Watched train: a slim black bar */
 .watch {
-  background: var(--board); color: var(--board-fg); border-radius: 14px; padding: 16px 18px;
-  display: grid; grid-template-columns: 1fr auto; gap: 4px 16px; align-items: center;
+  background: var(--board); color: var(--board-fg); border-radius: 14px; padding: 12px 14px 12px 16px;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 2px 14px; align-items: center; cursor: pointer;
+  border-left: 5px solid var(--accent);
 }
-.watch .label { font: 600 11px/1 var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: #ff6b6b; }
-.watch .what { font: 600 20px/1.2 var(--font-display); min-width: 0; }
-.watch .detail { color: var(--board-muted); font-size: 14px; }
-.watch .count { grid-row: 1 / span 3; grid-column: 2; text-align: right; font: 700 40px/1 var(--font-display); font-variant-numeric: tabular-nums; }
-.watch .count small { display: block; font: 500 12px/1.4 var(--font-body); color: var(--board-muted); }
+.watch .label { font: 600 10.5px/1 var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: #ff6b6b; }
+.watch .what { font: 600 17px/1.25 var(--font-display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.watch .wdet { color: var(--board-muted); font-size: 13px; }
 .watch .late { color: #ff6b6b; font-weight: 600; }
-.watch .stop { grid-column: 1 / -1; justify-self: start; margin-top: 8px; background: none; border: 1px solid rgb(255 255 255 / .3); color: var(--board-fg); border-radius: 8px; padding: 4px 10px; font-size: 13px; }
+.watch .count { grid-row: 1 / span 3; grid-column: 2; text-align: right; font: 700 30px/1 var(--font-mono); font-variant-numeric: tabular-nums; }
+.watch .stop { grid-row: 1 / span 3; grid-column: 3; background: none; border: 1px solid rgb(255 255 255 / .3); color: var(--board-fg); border-radius: 50%; width: 32px; height: 32px; font-size: 16px; line-height: 1; }
 
 /* Board */
-.board { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.board { flex: 1 1 0; min-height: 420px; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
 .board-head {
-  background: var(--board); color: var(--board-fg); padding: 14px 18px; border-top: 4px solid var(--accent);
-  display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap;
+  background: var(--board); color: var(--board-fg); padding: 12px 16px; border-top: 4px solid var(--accent);
+  display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
 }
-.board-head h2 { margin: 0; font: 700 22px/1.15 var(--font-display); }
-.board-head .clock { font: 600 20px/1 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--board-muted); }
-.cols, .dep {
-  display: grid; grid-template-columns: 92px 82px minmax(0, 1fr) 62px; gap: 0 12px; align-items: center;
-  padding: 11px 18px;
+.board-head h2 { margin: 0; font: 700 20px/1.2 var(--font-display); min-width: 0; overflow-wrap: anywhere; }
+.board-head .clock { font: 600 18px/1 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--board-muted); flex: none; }
+.list-wrap { position: relative; flex: 1 1 0; min-height: 0; display: flex; }
+.list {
+  flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+  position: relative; background: var(--bg); padding: 10px; display: flex; flex-direction: column; gap: 8px;
 }
-.cols { font: 600 11px/1 var(--font-body); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); padding-block: 9px; }
-.cols .r, .dep .r { text-align: right; }
-.dep { border-bottom: 1px solid var(--line); cursor: pointer; position: relative; }
-.dep:last-child { border-bottom: 0; }
-.dep:hover { background: color-mix(in srgb, var(--accent) 5%, var(--surface)); }
-.dep.watched { box-shadow: inset 4px 0 0 var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
-.time-c { display: grid; gap: 2px; }
-.time { font: 600 18px/1.1 var(--font-mono); font-variant-numeric: tabular-nums; }
-.time.countdown { color: var(--accent); font-weight: 700; }
-.time-c small { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.delay { display: block; font: 600 12px/1.3 var(--font-body); color: var(--late); }
+.to-now {
+  position: absolute; left: 50%; transform: translateX(-50%); top: 10px; z-index: 3;
+  border: 0; background: var(--fg); color: var(--surface); border-radius: 999px; padding: 7px 14px;
+  font-weight: 600; font-size: 13px; box-shadow: 0 4px 14px rgb(0 0 0 / .25);
+}
+
+/* Departure card: line and destination on top, time or countdown big below, platform on the right. */
+.card {
+  position: relative; overflow: hidden; flex: none;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+  padding: 12px 12px 12px 14px; cursor: pointer;
+  display: grid; grid-template-columns: minmax(0, 1fr) 64px; grid-template-areas: "head plat" "when plat" "trip plat";
+  gap: 6px 12px; align-items: center;
+}
+.card:hover { border-color: var(--muted); }
+.card.watched { border-color: var(--accent); box-shadow: 0 0 0 1.5px var(--accent); }
+.card .head { grid-area: head; display: flex; align-items: center; gap: 10px; min-width: 0; }
+.card .dest { font-weight: 600; font-size: 16.5px; line-height: 1.25; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card .when { grid-area: when; }
+.card .tripinfo { grid-area: trip; color: var(--muted); font-size: 13px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card .tripinfo b { color: var(--fg); font-weight: 600; }
+.card .plat { grid-area: plat; }
+
 .badge {
-  display: inline-block; font: 700 13px/1 var(--font-display); letter-spacing: .02em;
-  padding: 5px 7px; border-radius: 5px; border: 1.5px solid currentColor; white-space: nowrap;
+  display: inline-block; flex: none; font: 700 15px/1 var(--font-display); letter-spacing: .02em;
+  padding: 5px 8px; border-radius: 6px; border: 1.5px solid currentColor; white-space: nowrap;
 }
 .badge.long { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
-.dest { min-width: 0; }
-.dest b { display: block; font-weight: 600; font-size: 16px; overflow-wrap: anywhere; }
-.dest .via { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; color: var(--muted); font-size: 13px; overflow: hidden; overflow-wrap: anywhere; }
-.dep.liv-lex .dest { padding-right: 46px; }
-.plat {
-  justify-self: end; align-self: center; display: grid; justify-items: center; min-width: 50px;
-  border: 2px solid var(--fg); border-radius: 8px; padding: 3px 6px 4px; background: var(--surface); color: var(--fg); position: relative; z-index: 1;
-}
-.plat small { font: 600 9.5px/1.2 var(--font-body); letter-spacing: .08em; text-transform: uppercase; opacity: .75; }
-.plat b { font: 700 20px/1.05 var(--font-mono); }
-.plat.changed { background: var(--warn-bg); color: var(--warn-fg); border-color: var(--warn-bg); }
-.plat.unknown b { opacity: .45; }
 
-/* Livery rows: fixed colours, the same in light and dark mode, because a livery doesn't change. */
-.dep.liv { background: #ffffff; color: #111111; border-bottom-color: #d9d9d9; overflow: hidden; }
-.dep.liv .via, .dep.liv .time-c small { color: #555555; }
-.dep.liv .type { color: #111111; }
-.dep.liv .time.countdown { color: #d8232a; }
-.dep.liv .delay { color: #d8232a; }
-.dep.liv .plat { background: #ffffff; color: #111111; border-color: #111111; }
-.dep.liv .plat.changed { background: #d8232a; color: #ffffff; border-color: #d8232a; }
-.dep.liv:hover { background: #fafafa; }
-.dep.liv.watched { background: #fff6f6; }
-/* Léman Express: white body with a sweep of blue and red. */
-.dep.liv-lex::before {
-  content: ""; position: absolute; top: -10px; bottom: -10px; right: 34px; width: 74px; transform: skewX(-24deg);
-  background: linear-gradient(90deg, #1f4e9c 0 32%, #ffffff 32% 40%, #e30613 40% 72%, #ffffff 72% 78%, #1f4e9c 78%);
+.when { display: flex; align-items: baseline; gap: 4px 10px; flex-wrap: wrap; min-width: 0; }
+.big { font: 700 30px/1 var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.big.countdown { color: var(--accent); }
+.big.gone { font: 700 22px/1.15 var(--font-display); color: var(--muted); letter-spacing: .01em; }
+.big.now { color: var(--accent); }
+.meta { color: var(--muted); font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.delay { color: var(--late); font-weight: 700; margin-left: 6px; }
+
+.plat {
+  align-self: stretch; display: grid; align-content: center; justify-items: center; gap: 1px;
+  border: 2px solid var(--fg); border-radius: 10px; padding: 6px 4px; background: var(--surface); color: var(--fg);
+  position: relative; z-index: 1; min-height: 64px;
 }
-.dep.liv-lex::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: linear-gradient(90deg, #1f4e9c, #e30613); }
-.dep.liv-lex .badge { background: #1f4e9c; color: #ffffff; border-color: #1f4e9c; }
+.plat small { font: 600 9px/1.2 var(--font-body); letter-spacing: .08em; text-transform: uppercase; opacity: .75; }
+.plat b { font: 700 28px/1 var(--font-mono); font-variant-numeric: tabular-nums; }
+.plat b.long { font-size: 18px; }
+.plat.changed { background: var(--warn-bg); color: var(--warn-fg); border-color: var(--warn-bg); }
+.plat.unknown b { opacity: .4; }
+
+.card.gone { background: transparent; border-style: dashed; }
+.card.gone .badge, .card.gone .dest { opacity: .55; }
+.card.gone .plat, .card.gone .plat.changed { background: var(--surface); color: var(--muted); border-color: var(--muted); }
+.card.liv.gone .plat { background: #f4f4f4; color: #777777; border-color: #999999; }
+@media (prefers-color-scheme: dark) { .card.liv.gone { filter: brightness(.55); } }
+
+.now-line { display: flex; align-items: center; gap: 10px; color: var(--accent); font: 600 11px/1 var(--font-body); letter-spacing: .1em; text-transform: uppercase; padding: 4px 2px; flex: none; }
+.now-line::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--accent); flex: none; }
+.now-line::after { content: ""; flex: 1; height: 2px; background: var(--accent); }
+.now-line span { order: 0; }
+
+/* Livery cards: fixed colours, the same in light and dark mode, because a livery doesn't change. */
+.liv { background: #ffffff; color: #111111; border-color: #d9d9d9; }
+.liv .meta, .liv .tripinfo { color: #555555; }
+.liv .tripinfo b { color: #111111; }
+.liv .big.countdown, .liv .big.now, .liv .delay { color: #d8232a; }
+.liv .big.gone { color: #666666; }
+.liv .plat { background: #ffffff; color: #111111; border-color: #111111; }
+.liv .plat.changed { background: #d8232a; color: #ffffff; border-color: #d8232a; }
+.card.liv.gone { background: #f4f4f4; }
+/* Léman Express: white body with a sweep of blue and red behind the platform. */
+.card.liv-lex { column-gap: 40px; }
+.card.liv-lex::before {
+  content: ""; position: absolute; top: -12px; bottom: -12px; right: 40px; width: 70px; transform: skewX(-22deg);
+  background: linear-gradient(90deg, #1f4e9c 0 30%, #ffffff 30% 40%, #e30613 40% 72%, #ffffff 72% 80%, #1f4e9c 80%);
+}
+.card.liv-lex::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: linear-gradient(90deg, #1f4e9c, #e30613); }
+.liv-lex .badge { background: #1f4e9c; color: #ffffff; border-color: #1f4e9c; }
 /* RE 33 (SBB KISS double-deckers): white body, red cab, dark window band, red doors. */
-.dep.liv-re33::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 9px; background: #d8232a; border-radius: 0 6px 6px 0; }
-.dep.liv-re33::after {
+.card.liv-re33 { padding-left: 22px; padding-bottom: 16px; }
+.card.liv-re33::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 9px; background: #d8232a; }
+.card.liv-re33::after {
   content: ""; position: absolute; left: 9px; right: 0; bottom: 0; height: 6px;
   background: repeating-linear-gradient(90deg, #2f2f2f 0 46px, #d8232a 46px 54px);
 }
-.dep.liv-re33 .badge { background: #d8232a; color: #ffffff; border-color: #d8232a; }
-.empty, .error { padding: 28px 18px; color: var(--muted); text-align: center; }
-.error { color: var(--late); background: var(--late-bg); }
-.more { width: 100%; border: 0; border-top: 1px solid var(--line); background: none; padding: 12px; color: var(--accent); font-weight: 600; }
-.hint { color: var(--muted); font-size: 13px; margin: 0; }
+.liv-re33 .badge { background: #d8232a; color: #ffffff; border-color: #d8232a; }
 
-/* Train types */
-.dest .type { display: block; font-size: 12.5px; font-weight: 600; color: var(--fg); margin-top: 1px; }
-.dest .type.loading { color: var(--muted); font-weight: 400; }
-.watch .train { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-top: 10px; }
-.watch .train img { width: 100%; max-width: 100%; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 10px; background: rgb(255 255 255 / .06); display: block; }
-.watch .train .tname { font: 700 18px/1.2 var(--font-display); }
-.watch .train .tdetail { color: var(--board-muted); font-size: 13.5px; }
-.watch .train .credit { color: var(--board-muted); font-size: 11px; opacity: .85; }
-.watch .train .credit a { color: inherit; }
+.empty, .error { padding: 28px 18px; color: var(--muted); text-align: center; }
+.error { color: var(--late); background: var(--late-bg); border-radius: 10px; }
+.empty .fix { margin-top: 12px; border: 1px solid var(--accent); color: var(--accent); background: none; border-radius: 8px; padding: 6px 12px; font-weight: 600; }
+.more { flex: none; border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 12px; color: var(--accent); font-weight: 600; }
+
+/* Train detail page */
+.detail {
+  position: fixed; inset: 0; z-index: 30; background: var(--bg); overflow-y: auto; overscroll-behavior: contain;
+  padding: max(8px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(28px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+}
+.detail .inner { max-width: 640px; margin: 0 auto; display: grid; gap: 12px; }
+.dbar { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+.back { border: 0; background: none; color: var(--accent); font-weight: 600; font-size: 17px; padding: 8px 6px 8px 0; display: inline-flex; align-items: center; gap: 4px; }
+.back::before { content: ""; width: 10px; height: 10px; border-left: 2.5px solid currentColor; border-bottom: 2.5px solid currentColor; transform: rotate(45deg); margin: 0 4px 0 4px; }
+.hero {
+  position: relative; overflow: hidden;
+  background: var(--board); color: var(--board-fg); border-radius: 16px; padding: 18px 18px 20px; border-top: 5px solid var(--accent);
+  display: grid; grid-template-columns: minmax(0, 1fr) 88px; grid-template-areas: "line plat" "dest plat" "when when" "status status"; gap: 8px 16px;
+}
+.hero .hline { grid-area: line; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.hero .badge { font-size: 20px; padding: 6px 10px; }
+.hero .op { color: var(--board-muted); font-size: 13px; }
+.hero h2 { grid-area: dest; margin: 0; font: 700 26px/1.15 var(--font-display); overflow-wrap: anywhere; }
+.hero h2 small { display: block; font: 500 14px/1.4 var(--font-body); color: var(--board-muted); margin-top: 2px; }
+.hero .when { grid-area: when; margin-top: 6px; }
+.hero .big { font-size: 52px; }
+.hero .big.gone { font-size: 34px; color: var(--board-muted); }
+.hero .meta { color: var(--board-muted); font-size: 15px; }
+.hero .plat { grid-area: plat; align-self: start; min-height: 88px; background: transparent; color: var(--board-fg); border-color: var(--board-fg); }
+.hero .plat b { font-size: 40px; }
+.hero .plat.changed { background: var(--warn-bg); border-color: var(--warn-bg); color: #fff; }
+.hero .status { grid-area: status; font-weight: 600; font-size: 14px; color: var(--board-muted); }
+.hero .status.bad { color: #ff6b6b; }
+.hero .status.good { color: var(--board-fg); }
+.hero.liv { background: #ffffff; color: #111111; border: 1px solid #d9d9d9; border-top: 0; padding-top: 30px; }
+.hero.liv .op, .hero.liv h2 small, .hero.liv .meta, .hero.liv .status { color: #555555; }
+.hero.liv .status.bad { color: #d8232a; }
+.hero.liv .status.good { color: #111111; }
+.hero.liv .big.gone { color: #666666; }
+.hero.liv .plat { color: #111111; border-color: #111111; }
+.hero.liv .plat.changed { background: #d8232a; border-color: #d8232a; color: #fff; }
+.hero.liv-lex::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 12px; background: repeating-linear-gradient(115deg, #1f4e9c 0 40px, #ffffff 40px 46px, #e30613 46px 86px, #ffffff 86px 92px); }
+.hero.liv-re33 { padding-left: 28px; }
+.hero.liv-re33::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 10px; background: #d8232a; }
+.hero.liv-re33::after { content: ""; position: absolute; left: 10px; right: 0; top: 0; height: 10px; background: repeating-linear-gradient(90deg, #2f2f2f 0 56px, #d8232a 56px 66px); }
+.dwatch { border: 0; background: var(--accent); color: var(--accent-fg); border-radius: 12px; padding: 13px; font-weight: 600; font-size: 16px; }
+.dwatch.on { background: var(--surface); color: var(--accent); border: 1.5px solid var(--accent); }
+.sect { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 10px; min-width: 0; }
+.sect h3 { margin: 0; font: 600 11px/1 var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.sect .note { color: var(--muted); font-size: 14px; margin: 0; }
+.tinfo { display: grid; gap: 6px; }
+.tinfo + .tinfo { border-top: 1px solid var(--line); padding-top: 14px; margin-top: 4px; }
+.tinfo .for { font-size: 13px; color: var(--muted); }
+.tinfo img { width: 100%; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 10px; background: var(--bg); display: block; }
+.tinfo .tname { font: 700 22px/1.2 var(--font-display); }
+.tinfo .tdetail { color: var(--muted); font-size: 14px; }
+.facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 4px 0 0; }
+.facts div { background: var(--bg); border-radius: 10px; padding: 8px 10px; }
+.facts dt { font: 600 10.5px/1.2 var(--font-body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.facts dd { margin: 2px 0 0; font: 700 20px/1.1 var(--font-mono); }
+.tinfo .credit { color: var(--muted); font-size: 11.5px; }
+.tinfo .credit a { color: inherit; }
+.stops { list-style: none; margin: 0; padding: 0; }
+.stops li { position: relative; display: grid; grid-template-columns: 50px 14px minmax(0, 1fr) auto; gap: 0 10px; align-items: center; padding: 7px 0; }
+.stops li::before { content: ""; position: absolute; left: 66px; top: 0; bottom: 0; width: 2px; background: var(--line); }
+.stops li:first-child::before { top: 50%; }
+.stops li:last-child::before { bottom: 50%; }
+.stops .t { font: 600 14px/1.2 var(--font-mono); font-variant-numeric: tabular-nums; }
+.stops .t .delay { display: block; margin: 0; font: 700 11.5px/1.2 var(--font-body); }
+.stops .pt { position: relative; z-index: 1; justify-self: center; width: 10px; height: 10px; border-radius: 50%; background: var(--surface); border: 2px solid var(--muted); }
+.stops .n { min-width: 0; overflow-wrap: anywhere; }
+.stops .pl { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+.stops li.end .pt { background: var(--fg); border-color: var(--fg); width: 12px; height: 12px; }
+.stops li.end .n { font-weight: 600; }
+.stops li.past { color: var(--muted); }
+.stops li.past .pt { background: var(--muted); border-color: var(--muted); }
+.legh { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+.legh .badge { font-size: 13px; padding: 4px 7px; }
+.change { background: var(--bg); border-radius: 10px; padding: 9px 12px; font-size: 14px; color: var(--muted); }
+.change b { color: var(--fg); }
+.kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 16px; margin: 0; font-size: 14px; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; font-weight: 500; overflow-wrap: anywhere; }
+
 .head-actions { display: flex; align-items: baseline; gap: 12px; }
 .gear { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 4px 10px; font-size: 13px; font-weight: 500; }
+.gear.alert { border-color: var(--accent); color: var(--accent); font-weight: 600; }
 .settings { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; display: grid; gap: 10px; }
 .settings h2 { margin: 0; font: 700 18px/1.2 var(--font-display); }
 .settings p { margin: 0; color: var(--muted); font-size: 14px; max-width: 65ch; }
@@ -213,28 +318,25 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
 .settings .status { font-size: 13px; font-weight: 600; }
 .settings .status.ok { color: var(--ok); }
 .settings .status.bad { color: var(--late); }
-.gear.alert { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.settings .about { border-top: 1px solid var(--line); padding-top: 10px; font-size: 13px; }
 .toast {
-  position: fixed; left: 50%; transform: translateX(-50%); z-index: 20;
+  position: fixed; left: 50%; transform: translateX(-50%); z-index: 40;
   bottom: calc(20px + env(safe-area-inset-bottom, 0px));
   background: var(--fg); color: var(--surface); padding: 10px 16px; border-radius: 10px;
   font-weight: 600; font-size: 14px; box-shadow: 0 6px 20px rgb(0 0 0 / .25); max-width: calc(100% - 32px);
 }
 
-@media (max-width: 560px) {
-  .cols { display: none; }
-  .dep { grid-template-columns: 74px minmax(0, 1fr) 56px; grid-template-areas: "time line plat" "time dest plat"; gap: 4px 10px; padding: 11px 14px; }
-  .dep .time-c { grid-area: time; align-self: start; }
-  .dep .line-c { grid-area: line; }
-  .dep .dest { grid-area: dest; }
-  .dep .plat { grid-area: plat; }
-  .dep.liv-lex::before { right: 22px; width: 62px; }
-  .dep.liv-lex .dest { padding-right: 30px; }
-  .dep.liv-re33 { padding-left: 20px; }
-  .watch .count { font-size: 32px; }
+@media (min-width: 600px) {
+  .card { grid-template-columns: minmax(0, 1fr) 72px; padding: 14px 14px 14px 18px; }
+  .big { font-size: 34px; }
+}
+@media (max-width: 380px) {
+  .big { font-size: 26px; }
+  .hero .big { font-size: 44px; }
+  .facts dd { font-size: 17px; }
 }
 @media (prefers-reduced-motion: no-preference) {
-  .dep { transition: background-color .15s; }
+  .card { transition: border-color .15s; }
 }
 </style>
 </head>
@@ -262,6 +364,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
       <button id="key-clear" class="secondary">Remove</button>
     </div>
     <span class="status" id="key-status" aria-live="polite"></span>
+    <p class="about">Live data from transport.opendata.ch (SBB timetable and real-time delays), refreshed every 30 seconds. All times are Swiss time. Train types come from SBB's train formation data; photos from Wikimedia Commons.</p>
   </section>
 
   <section class="trip" aria-label="Search">
@@ -285,33 +388,36 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
     <button class="swap" id="swap" aria-label="Swap departure and arrival">⇅</button>
   </section>
 
-  <div class="controls">
-    <div class="chips" id="modes" role="group" aria-label="Transport types">
-      <button class="chip" data-mode="train">Train</button>
-      <button class="chip" data-mode="tram">Tram</button>
-      <button class="chip" data-mode="bus">Bus</button>
-      <button class="chip" data-mode="ship">Boat</button>
-      <button class="chip" data-mode="cableway">Cableway</button>
-    </div>
+  <div class="chips" id="modes" role="group" aria-label="Transport types">
+    <button class="chip" data-mode="train">Train</button>
+    <button class="chip" data-mode="tram">Tram</button>
+    <button class="chip" data-mode="bus">Bus</button>
+    <button class="chip" data-mode="ship">Boat</button>
+    <button class="chip" data-mode="cableway">Cableway</button>
   </div>
 
   <section class="watch" id="watch" hidden aria-live="polite"></section>
 
-  <section class="board" aria-live="polite">
+  <section class="board">
     <div class="board-head">
       <h2 id="station-name">–</h2>
       <span class="clock" id="clock">--:--</span>
     </div>
-    <div class="cols" aria-hidden="true" id="cols">
-      <span>Dep.</span><span>Line</span><span id="col-dest">Destination</span><span class="r">Platform</span>
+    <div class="list-wrap">
+      <div class="list" id="list" aria-live="polite"><div class="empty">Search for a station to see its departures.</div></div>
+      <button class="to-now" id="to-now" hidden>Back to now</button>
     </div>
-    <div id="list"><div class="empty">Search for a station to see its departures.</div></div>
-    <button class="more" id="more" hidden>Show more departures</button>
   </section>
 
   <div class="toast" id="toast" role="status" hidden></div>
-  <p class="hint">Live data from transport.opendata.ch (SBB timetable and real-time delays), refreshed every 30 seconds. Enter only a departure station for its board, or both stations for trains between them. Trains leaving within 20 minutes count down to the second. Tap a train to watch it. Times shown are Swiss time. Train types come from SBB's train formation data (set up under Settings); photos from Wikimedia Commons.</p>
 </div>
+
+<section class="detail" id="detail" role="dialog" aria-modal="true" aria-labelledby="d-title" hidden>
+  <div class="inner">
+    <div class="dbar"><button class="back" id="d-back">Board</button></div>
+    <div id="d-body"></div>
+  </div>
+</section>
 
 <script src="trains/photos.js"></script>
 <script src="trains.js"></script>
@@ -321,6 +427,8 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
   const TT = window.TrainTypes;
   const REFRESH_MS = 30000;
   const COUNTDOWN_S = 20 * 60;            // count down to the second below 20 minutes
+  const PAST_S = 60 * 60;                 // how far back departed trains are kept
+  const GONE_AFTER_S = 30;                // "now" for half a minute, then "Departed"
   const $ = (id) => document.getElementById(id);
 
   // ---------- Saved settings (this device only) ----------
@@ -338,10 +446,13 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
     modes: store.get("modes", ["train"]),
     watch: store.get("watch", null),
     limit: 30,
-    journeys: [],
+    journeys: [],                        // the live list, from now on
+    past: new Map(),                     // key -> row, trains that already left (or were due to)
+    pastAt: 0,
     loadedAt: null,
     error: null,
-    loading: false
+    loading: false,
+    detail: null                         // key of the train shown full screen
   };
   if (!state.freq) {
     state.freq = {};
@@ -357,8 +468,11 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
   const fmtTime = new Intl.DateTimeFormat("de-CH", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Zurich" });
   const fmtClock = new Intl.DateTimeFormat("de-CH", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Europe/Zurich" });
   const fmtDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Zurich" });
+  const fmtDay = new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Zurich" });
   const hhmm = (sec) => fmtTime.format(new Date(sec * 1000));
   const now = () => Date.now() / 1000;
+  const when = (j) => j.expected ?? j.planned;
+  const isGone = (j) => when(j) < now() - GONE_AFTER_S;
 
   // ---------- Normalising both kinds of result into one row shape ----------
   const tsOf = (iso, fallback) => {
@@ -394,15 +508,28 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
     const plat = cleanPlat(stop.platform), prog = cleanPlat(stop.prognosis && stop.prognosis.platform);
     return { platform: prog || plat, platformChanged: !!(prog && plat && prog !== plat) };
   }
+  // One stop on a route: planned and expected arrival/departure, delay and platform.
+  function stopOf(p) {
+    if (!p) return null;
+    const st = p.station || p.location || {};
+    const d = timing(p, "departureTimestamp", "departure"), a = timing(p, "arrivalTimestamp", "arrival");
+    return { name: st.name || "", dep: d.planned, depX: d.expected, arr: a.planned, arrX: a.expected,
+             delay: Math.max(d.planned != null ? d.delay : 0, a.planned != null ? a.delay : 0), ...platformOf(p) };
+  }
 
   function fromBoard(j) {
     const stop = j.stop || {};
     const t = timing(stop, "departureTimestamp", "departure");
+    const stops = (j.passList || []).map(stopOf).filter((s) => s && s.name);
+    // The route list starts after this station; put this station first.
+    const here = stopOf(stop);
+    if (here && here.name && (!stops.length || stops[0].name !== here.name)) stops.unshift(here);
     return {
       ...t, ...platformOf(stop), ...trainFields(j, t.planned),
       key: [t.planned, j.category, j.number, j.to].join("|"),
       to: j.to || "",
-      sub: (() => { const v = (j.passList || []).slice(1, -1).map((p) => p.station && p.station.name).filter(Boolean); return v.length ? "via " + v.slice(0, 4).join(", ") : ""; })()
+      stops,
+      sub: (() => { const v = stops.slice(1, -1).map((s) => s.name); return v.length ? "via " + v.slice(0, 4).join(", ") : ""; })()
     };
   }
 
@@ -414,17 +541,28 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
   function fromConnection(c) {
     const f = c.from || {}, a = c.to || {};
     const t = timing(f, "departureTimestamp", "departure");
-    const legs = (c.sections || []).filter((s) => s.journey);
-    const first = legs[0] ? legs[0].journey : {};
+    const legs = (c.sections || []).map((s) => {
+      const from = stopOf(s.departure), arrive = stopOf(s.arrival);
+      if (!s.journey) return { walk: true, from, arrive };
+      return { ...trainFields(s.journey, from && from.dep), to: s.journey.to || "", from, arrive,
+               stops: (s.journey.passList || []).map(stopOf).filter((x) => x && x.name) };
+    });
+    const rides = legs.filter((l) => !l.walk);
+    const first = (c.sections || []).find((s) => s.journey);
+    const fj = first ? first.journey : {};
     const arr = timing(a, "arrivalTimestamp", "arrival");
-    const changes = legs.slice(1).map((s) => s.departure && s.departure.station && s.departure.station.name).filter(Boolean);
-    const arrText = `Arrives ${(a.station && a.station.name) || state.to.name} ${hhmm(arr.expected ?? arr.planned)}` + (arr.delay > 0 ? ` (+${arr.delay})` : "");
+    const changes = rides.slice(1).map((l) => l.from && l.from.name).filter(Boolean);
+    const arrName = (a.station && a.station.name) || state.to.name;
+    const changeText = changes.length ? (changes.length === 1 ? "1 change at " + changes[0] : changes.length + " changes") : "direct";
     return {
-      ...t, ...platformOf(f), ...trainFields(first, t.planned),
-      key: ["c", t.planned, first.name || first.number, first.to].join("|"),
-      to: first.to || (a.station && a.station.name) || "",
-      sub: [arrText, duration(c.duration), changes.length ? (changes.length === 1 ? "1 change at " + changes[0] : changes.length + " changes") : "direct"].filter(Boolean).join(" · "),
-      more: legs.length > 1 ? "+" + (legs.length - 1) : ""
+      ...t, ...platformOf(f), ...trainFields(fj, t.planned),
+      key: ["c", t.planned, fj.name || fj.number, fj.to].join("|"),
+      to: fj.to || arrName,
+      trip: true, legs, arrName,
+      arr: arr.planned, arrX: arr.expected, arrDelay: arr.delay,
+      dur: duration(c.duration), changeText,
+      sub: [`Arrives ${arrName} ${hhmm(arr.expected ?? arr.planned)}` + (arr.delay > 0 ? ` (+${arr.delay})` : ""), duration(c.duration), changeText].filter(Boolean).join(" · "),
+      more: rides.length > 1 ? "+" + (rides.length - 1) : ""
     };
   }
 
@@ -437,6 +575,23 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
     return res.json();
   }
 
+  // Departures (or connections) from `start` (seconds; null = now).
+  async function fetchRows(start, limit) {
+    const params = [];
+    const at = start != null ? new Date(start * 1000) : null;
+    if (isTrip()) {
+      params.push(["from", state.from.id], ["to", state.to.id], ["limit", String(limit)]);
+      if (at) params.push(["date", fmtDate.format(at)], ["time", fmtTime.format(at)]);
+    } else {
+      params.push(["id", state.from.id], ["limit", String(limit)]);
+      if (at) params.push(["datetime", fmtDate.format(at) + " " + fmtTime.format(at)]);
+    }
+    for (const m of state.modes) params.push(["transportations[]", m]);
+    if (isTrip()) return { rows: ((await getJSON("/connections", params)).connections || []).map(fromConnection) };
+    const data = await getJSON("/stationboard", params);
+    return { rows: (data.stationboard || []).map(fromBoard), data };
+  }
+
   let loadSeq = 0;
   async function loadBoard({ quiet } = {}) {
     if (!state.from) return;
@@ -444,28 +599,31 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
     state.loading = true;
     if (!quiet) render();
     try {
-      let rows;
-      if (isTrip()) {
-        const params = [["from", state.from.id], ["to", state.to.id], ["limit", String(state.limit)]];
-        for (const m of state.modes) params.push(["transportations[]", m]);
-        const data = await getJSON("/connections", params);
-        rows = (data.connections || []).map(fromConnection);
-      } else {
-        const params = [["id", state.from.id], ["limit", String(state.limit)]];
-        for (const m of state.modes) params.push(["transportations[]", m]);
-        const data = await getJSON("/stationboard", params);
-        rows = (data.stationboard || []).map(fromBoard);
-        if (data.station && data.station.name && data.station.name !== state.from.name) { state.from.name = data.station.name; save(); syncInputs(); }
-        if (!rows.length && !state.from.icon) {
-          try {
-            const loc = await getJSON("/locations", [["query", state.from.name], ["type", "station"]]);
-            const hit = (loc.stations || []).find((x) => String(x.id) === state.from.id);
-            if (hit && hit.icon) { state.from.icon = hit.icon; save(); }
-          } catch {}
-        }
-      }
+      // Departed trains: fetched once per search (and every few minutes), from an hour ago.
+      const wantPast = Date.now() - state.pastAt > 5 * 60000;
+      const [live, past] = await Promise.all([
+        fetchRows(null, state.limit),
+        wantPast ? fetchRows(now() - PAST_S, isTrip() ? 8 : 40).catch(() => null) : null
+      ]);
       if (seq !== loadSeq) return;           // a newer search replaced this one
-      state.journeys = rows;
+      const data = live.data;
+      if (data && data.station && data.station.name && data.station.name !== state.from.name) { state.from.name = data.station.name; save(); syncInputs(); }
+      if (data && !live.rows.length && !state.from.icon) {
+        try {
+          const loc = await getJSON("/locations", [["query", state.from.name], ["type", "station"]]);
+          const hit = (loc.stations || []).find((x) => String(x.id) === state.from.id);
+          if (hit && hit.icon) { state.from.icon = hit.icon; save(); }
+        } catch {}
+      }
+      // Trains that dropped off the live list because their time passed stay on as departed.
+      const fresh = new Set(live.rows.map((r) => r.key));
+      for (const old of state.journeys) if (!fresh.has(old.key) && old.planned < now() + 60) state.past.set(old.key, old);
+      if (past) {
+        for (const r of past.rows) if (r.planned < now()) state.past.set(r.key, r);
+        state.pastAt = Date.now();
+      }
+      for (const [k, r] of state.past) if (when(r) < now() - PAST_S) state.past.delete(k);
+      state.journeys = live.rows;
       state.loadedAt = Date.now();
       state.error = null;
     } catch (e) {
@@ -476,83 +634,165 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
     }
   }
 
-  // ---------- Rendering ----------
+  // Everything to show: departed trains first (oldest at the top), then upcoming in timetable order.
+  function allRows() {
+    const m = new Map();
+    for (const r of state.past.values()) m.set(r.key, r);
+    for (const r of state.journeys) m.set(r.key, r);
+    const rows = [...m.values()].filter((r) => r.planned != null && when(r) >= now() - PAST_S);
+    const gone = rows.filter(isGone).sort((a, b) => when(a) - when(b));
+    const next = rows.filter((r) => !isGone(r)).sort((a, b) => a.planned - b.planned || when(a) - when(b));
+    return { gone, next };
+  }
+  const findRow = (key) => state.journeys.find((r) => r.key === key) || state.past.get(key) || null;
+
+  // ---------- Rendering helpers ----------
   const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
 
   function untilText(ts) {
     const m = Math.floor((ts - now()) / 60);
     if (m <= 0) return "now";
     if (m < 60) return m + "′";
-    return Math.floor(m / 60) + "h" + String(m % 60).padStart(2, "0");
+    return Math.floor(m / 60) + " h " + String(m % 60).padStart(2, "0");
   }
-  function countdown(ts) {        // "12:05" style, minutes and seconds
+  function countdown(ts) {        // minutes and seconds, e.g. 12′05″
     const s = Math.max(0, Math.round(ts - now()));
     return s === 0 ? "now" : Math.floor(s / 60) + "′" + String(s % 60).padStart(2, "0") + "″";
   }
+  const delayEl = (d) => el("span", "delay", "+" + d + "′");
 
-  // Left column: a live countdown under 20 minutes, the departure time otherwise.
-  const timeCells = [];
-  function fillTime(cell, j) {
-    const left = (j.expected ?? j.planned) - now();
+  // The big time: countdown under 20 minutes, the departure time later on, "Departed" once it has left.
+  function fillWhen(cell, j) {
+    const t = when(j), left = t - now();
     cell.replaceChildren();
-    if (left < COUNTDOWN_S) {
-      cell.append(el("span", "time countdown", countdown(j.expected ?? j.planned)));
-      cell.append(el("small", "", "dep " + hhmm(j.planned)));
-      cell.setAttribute("aria-label", left <= 0 ? "departing now" : `departs in ${Math.floor(left / 60)} minutes ${Math.round(left % 60)} seconds`);
+    let big, meta, label;
+    if (isGone(j)) {
+      big = el("span", "big gone", "Departed");
+      meta = el("span", "meta", hhmm(j.planned));
+      label = `departed, ${hhmm(j.planned)}`;
+    } else if (left < COUNTDOWN_S) {
+      const c = countdown(t);
+      big = el("span", "big " + (c === "now" ? "now" : "countdown"), c);
+      meta = el("span", "meta", "dep. " + hhmm(j.planned));
+      label = left <= 0 ? "departing now" : `departs in ${Math.floor(left / 60)} minutes ${Math.round(left % 60)} seconds`;
     } else {
-      cell.append(el("span", "time", hhmm(j.planned)));
-      cell.append(el("small", "", "in " + untilText(j.expected ?? j.planned)));
-      cell.removeAttribute("aria-label");
+      big = el("span", "big", hhmm(j.planned));
+      meta = el("span", "meta", "in " + untilText(t));
+      label = `departs ${hhmm(j.planned)}`;
     }
-    if (j.delay > 0) cell.append(el("span", "delay", "+" + j.delay + " min"));
+    if (j.delay > 0) { meta.append(delayEl(j.delay)); label += `, ${j.delay} minutes late`; }
+    cell.append(big, meta);
+    cell.dataset.label = label;
   }
+  function platBox(j) {
+    const p = el("span", "plat" + (j.platformChanged ? " changed" : "") + (j.platform ? "" : " unknown"));
+    const txt = j.platform || "–";
+    p.append(el("small", "", j.platformChanged ? "Changed" : "Platform"), el("b", txt.length > 3 ? "long" : "", txt));
+    if (j.platformChanged) p.title = "Platform changed";
+    return p;
+  }
+  const badge = (j, extra) => el("span", "badge" + (j.longDistance ? " long" : ""), j.line + (extra || ""));
+
+  // ---------- Board ----------
+  const timeCells = [];          // [cell, row, card|null, wasGone]
+  let pinNow = true;             // keep the list scrolled to "now" until the user scrolls away
+  const list = $("list");
+
+  function nowTop() {
+    const d = list.querySelector(".now-line");
+    return d ? d.offsetTop - 4 : 0;
+  }
+  function updatePin() {
+    const target = Math.min(nowTop(), list.scrollHeight - list.clientHeight);
+    pinNow = Math.abs(list.scrollTop - target) < 24;
+    $("to-now").hidden = pinNow || !list.querySelector(".now-line");
+    $("to-now").textContent = list.scrollTop < target ? "↓ Back to now" : "↑ Back to now";
+  }
+  list.addEventListener("scroll", updatePin, { passive: true });
+  $("to-now").addEventListener("click", () => {
+    list.scrollTo({ top: nowTop(), behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  });
 
   function renderModes() {
     for (const b of $("modes").querySelectorAll(".chip"))
       b.setAttribute("aria-pressed", String(state.modes.includes(b.dataset.mode)));
   }
 
+  function card(j) {
+    const cls = ["card"];
+    if (j.livery) cls.push("liv", "liv-" + j.livery);
+    if (isGone(j)) cls.push("gone");
+    if (state.watch && state.watch.key === j.key) cls.push("watched");
+    const r = el("div", cls.join(" "));
+    r.dataset.key = j.key;
+    r.tabIndex = 0; r.setAttribute("role", "button");
+    const head = el("div", "head");
+    head.append(badge(j, j.more ? " " + j.more : ""), el("span", "dest", j.to));
+    const w = el("div", "when"); fillWhen(w, j);
+    r.append(head, w);
+    if (j.trip) {
+      const ti = el("div", "tripinfo");
+      ti.append("Arr. ", el("b", "", hhmm(j.arrX ?? j.arr)));
+      if (j.arrDelay > 0) ti.append(delayEl(j.arrDelay));
+      ti.append(" · " + [j.dur, j.changeText].filter(Boolean).join(" · "));
+      r.append(ti);
+    }
+    r.append(platBox(j));
+    const label = () => `${j.line} to ${j.to}, ${w.dataset.label}, platform ${j.platform || "unknown"}${j.trip ? ", " + j.sub : ""}. Show details.`;
+    r.setAttribute("aria-label", label());
+    timeCells.push([w, j, r, isGone(j), label]);
+    const open = () => openDetail(j.key, r);
+    r.addEventListener("click", open);
+    r.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } });
+    return r;
+  }
+
   function renderList() {
-    const list = $("list"); list.replaceChildren(); timeCells.length = 0;
+    // Remember what's at the top of the view, so a refresh doesn't make the list jump.
+    let anchor = null;
+    if (!pinNow) {
+      for (const c of list.querySelectorAll(".card")) {
+        if (c.offsetTop + c.offsetHeight > list.scrollTop) { anchor = [c.dataset.key, c.offsetTop - list.scrollTop]; break; }
+      }
+    }
+    list.replaceChildren(); timeCells.length = 0;
     const trip = isTrip();
     $("station-name").textContent = state.from ? state.from.name + (trip ? " → " + state.to.name : "") : "–";
-    $("col-dest").textContent = trip ? "Train and arrival" : "Destination";
     if (state.error) list.append(el("div", "error", state.error));
-    const cutoff = now() - 60;
-    const rows = state.journeys.filter((j) => (j.expected ?? j.planned) >= cutoff);
-    if (!rows.length) {
+    const { gone, next } = allRows();
+    if (!gone.length && !next.length) {
       if (!state.error) {
         if (state.loading) list.append(el("div", "empty", trip ? "Looking for trains…" : "Loading departures…"));
         else if (trip) list.append(el("div", "empty", `No connections found from ${state.from.name} to ${state.to.name} for these transport types.`));
         else list.append(state.from ? emptyBoard(state.from) : el("div", "empty", "Enter a departure station."));
       }
-      $("more").hidden = true;
+      $("to-now").hidden = true;
       return;
     }
-    for (const j of rows) {
-      const cls = ["dep"];
-      if (j.livery) cls.push("liv", "liv-" + j.livery);
-      if (state.watch && state.watch.key === j.key) cls.push("watched");
-      const r = el("div", cls.join(" "));
-      r.tabIndex = 0; r.setAttribute("role", "button");
-      r.setAttribute("aria-label", `${j.line} to ${j.to}, ${hhmm(j.planned)}${j.delay > 0 ? ", " + j.delay + " minutes late" : ""}, platform ${j.platform || "unknown"}. Watch this train.`);
-      const tc = el("span", "time-c"); fillTime(tc, j); timeCells.push([tc, j]);
-      const lc = el("span", "line-c"); lc.append(el("span", "badge" + (j.longDistance ? " long" : ""), j.line + (j.more ? " " + j.more : "")));
-      const d = el("span", "dest"); d.append(el("b", "", j.to));
-      if (j.sub) d.append(el("span", "via", j.sub));
-      const tl = typeLabel(j, true);
-      if (tl) d.append(tl);
-      const p = el("span", "plat" + (j.platformChanged ? " changed" : "") + (j.platform ? "" : " unknown"));
-      p.append(el("small", "", j.platformChanged ? "New pl." : "Platform"), el("b", "", j.platform || "–"));
-      if (j.platformChanged) p.title = "Platform changed";
-      r.append(tc, lc, d, p);
-      const pick = () => toggleWatch(j);
-      r.addEventListener("click", pick);
-      r.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } });
-      list.append(r);
+    for (const j of gone) list.append(card(j));
+    if (gone.length) {
+      const nl = el("div", "now-line");
+      nl.append(el("span", "", "Now · scroll up for departed"));
+      list.append(nl);
     }
-    $("more").textContent = trip ? "Show later trains" : "Show more departures";
-    $("more").hidden = trip ? state.limit >= 16 : state.limit >= 120;
+    for (const j of next) list.append(card(j));
+    if (!next.length && !state.error) list.append(el("div", "empty", "No more departures loaded."));
+    const canMore = trip ? state.limit < 16 : state.limit < 120;
+    if (canMore) {
+      const more = el("button", "more", trip ? "Show later trains" : "Show more departures");
+      more.addEventListener("click", () => {
+        state.limit = trip ? Math.min(16, state.limit + 4) : Math.min(120, state.limit + 30);
+        more.textContent = "Loading…"; more.disabled = true;
+        loadBoard({ quiet: true });
+      });
+      list.append(more);
+    }
+    if (pinNow) list.scrollTop = nowTop();
+    else if (anchor) {
+      const c = [...list.querySelectorAll(".card")].find((x) => x.dataset.key === anchor[0]);
+      if (c) list.scrollTop = c.offsetTop - anchor[1];
+    }
+    updatePin();
   }
 
   const KIND = { train: "Train station", tram: "Tram stop", bus: "Bus stop", ship: "Boat landing", cableway: "Cableway station", funicular: "Funicular" };
@@ -572,37 +812,34 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
   }
 
   // ---------- Train types ----------
-  function typeLabel(j, fetchNow) {
-    if (!TT || !TT.hasKey() || !j.trainNo || !j.evu) return null;
-    const r = fetchNow || (state.watch && state.watch.key === j.key) ? TT.lookup(j) : null;
-    if (!r || r.state === "none" || r.state === "error") return null;
-    if (r.state === "loading") return el("span", "type loading", "Checking train type…");
-    if (r.info.unknown) return null;
-    const names = [...new Set(r.info.models.map((m) => TT.MODELS[m].name))];
-    return el("span", "type", names.join(" + ") + (r.info.loco && r.info.models.length ? " · " + TT.MODELS[r.info.loco].name : ""));
-  }
-
-  function trainBlock(w) {
-    if (!TT || !TT.hasKey() || !w.trainNo || !w.evu) return null;
-    const r = TT.lookup(w);
-    const box = el("div", "train");
-    if (!r || r.state === "loading") { box.append(el("span", "tdetail", "Checking which train this is…")); return box; }
+  function trainInfo(t, forText) {
+    const box = el("div", "tinfo");
+    if (forText) box.append(el("span", "for", forText));
+    if (!TT || !TT.hasKey()) {
+      box.append(el("p", "note", "Add your free Train Formation Service key under Settings to see which train model this is, with a photo."));
+      return box;
+    }
+    if (!t.trainNo || !t.evu) { box.append(el("p", "note", "The train type isn't published for this operator.")); return box; }
+    const r = TT.lookup(t);
+    if (!r || r.state === "loading") { box.append(el("p", "note", "Checking which train this is…")); return box; }
     if (r.state !== "ok" || r.info.unknown) {
-      box.append(el("span", "tdetail", r.state === "ok" ? "Train type: " + (r.info.raw || "not known") : "The train type isn't published for this train yet."));
+      box.append(el("p", "note", r.state === "ok" ? "Train type: " + (r.info.raw || "not known") : "The train type isn't published for this train yet."));
       return box;
     }
     const info = r.info, m = TT.MODELS[info.main], photo = TT.PHOTOS[info.main];
     if (photo) {
-      const img = el("img"); img.src = photo.src; img.alt = `${m.name}, ${m.detail}`; img.loading = "lazy";
+      const img = el("img"); img.src = photo.src; img.alt = `${m.name}, ${m.detail}`;
       box.append(img);
     }
     const names = [...new Set(info.models.map((id) => TT.MODELS[id].name))];
     box.append(el("span", "tname", (names.length ? names.join(" + ") : m.name) + (info.loco && info.models.length ? " with " + TT.MODELS[info.loco].name : "")));
-    const facts = [m.detail];
-    if (info.cars) facts.push(info.cars + (info.cars === 1 ? " car" : " cars"));
-    if (info.seats) facts.push(info.seats + " seats");
-    if (info.length) facts.push(info.length + " m long");
-    box.append(el("span", "tdetail", facts.join(" · ")));
+    box.append(el("span", "tdetail", m.detail));
+    const facts = el("dl", "facts");
+    for (const [k, v] of [["Cars", info.cars], ["Seats", info.seats], ["Length", info.length ? info.length + " m" : ""]]) {
+      if (!v) continue;
+      const d = el("div"); d.append(el("dt", "", k), el("dd", "", String(v))); facts.append(d);
+    }
+    if (facts.childElementCount) box.append(facts);
     if (photo) {
       const c = el("span", "credit", "Photo: " + photo.credit + ", ");
       const a = el("a", "", photo.license); a.href = photo.source; a.target = "_blank"; a.rel = "noopener";
@@ -611,6 +848,141 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
     return box;
   }
 
+  // ---------- Detail page ----------
+  let detailSnap = null, lastFocus = null;
+  const detailCells = [];
+  function openDetail(key, from) {
+    const j = findRow(key) || (state.watch && state.watch.key === key ? state.watch : null);
+    if (!j) return;
+    state.detail = key; detailSnap = j; lastFocus = from || null;
+    if (!(history.state && history.state.detail)) history.pushState({ detail: 1 }, "", "#train");
+    $("detail").hidden = false; document.body.classList.add("locked");
+    renderDetail();
+    $("detail").scrollTop = 0;
+    $("d-back").focus({ preventScroll: true });
+  }
+  function hideDetail() {
+    if ($("detail").hidden) return;
+    $("detail").hidden = true; document.body.classList.remove("locked");
+    state.detail = null; detailCells.length = 0;
+    if (lastFocus && lastFocus.isConnected) lastFocus.focus({ preventScroll: true });
+  }
+  $("d-back").addEventListener("click", () => { if (history.state && history.state.detail) history.back(); else hideDetail(); });
+  window.addEventListener("popstate", () => { if (!(history.state && history.state.detail)) hideDetail(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("detail").hidden) $("d-back").click(); });
+  if (location.hash === "#train") history.replaceState(null, "", location.pathname + location.search);
+
+  function stopTime(s, isFirst) {
+    const planned = isFirst ? (s.dep ?? s.arr) : (s.arr ?? s.dep);
+    const t = el("span", "t", planned != null ? hhmm(planned) : "");
+    if (s.delay > 0) t.append(delayEl(s.delay));
+    return t;
+  }
+  function stopList(stops, from, to) {
+    // Show the stops from `from` to `to` (by name); the ends are bold.
+    let a = from ? stops.findIndex((s) => s.name === from) : 0;
+    let b = to ? stops.findIndex((s) => s.name === to) : stops.length - 1;
+    if (a < 0) a = 0; if (b < a) b = stops.length - 1;
+    const ul = el("ol", "stops");
+    stops.slice(a, b + 1).forEach((s, i, arr) => {
+      const t = s.depX ?? s.arrX ?? s.dep ?? s.arr;
+      const li = el("li", (i === 0 || i === arr.length - 1 ? "end" : "") + (t != null && t < now() - 30 ? " past" : ""));
+      li.append(stopTime(s, i === 0), el("span", "pt"), el("span", "n", s.name), el("span", "pl", s.platform ? "Pl. " + s.platform : ""));
+      ul.append(li);
+    });
+    return ul;
+  }
+
+  function renderDetail() {
+    if (!state.detail) return;
+    const j = findRow(state.detail) || detailSnap; detailSnap = j;
+    const body = $("d-body"); body.replaceChildren(); detailCells.length = 0;
+    const inner = el("div", "inner"); inner.style.padding = "0";
+
+    // Hero: line, destination, the big time and the platform.
+    const hero = el("div", "hero" + (j.livery ? " liv liv-" + j.livery : ""));
+    const hl = el("div", "hline"); hl.append(badge(j));
+    if (j.operator) hl.append(el("span", "op", j.operator + (j.trainNo ? " · train " + j.trainNo : "")));
+    const h2 = el("h2"); h2.id = "d-title";
+    h2.append("to " + j.to);
+    const fromName = j.trip ? (j.legs && j.legs[0] && j.legs[0].from ? j.legs[0].from.name : state.from && state.from.name) : (j.stationName || (state.from && state.from.name));
+    h2.append(el("small", "", j.trip ? `Your trip: ${fromName} → ${j.arrName}` : `from ${fromName || ""}`));
+    const w = el("div", "when"); fillWhen(w, j); detailCells.push([w, j]);
+    const st = el("div", "status");
+    function status() {
+      if (isGone(j)) { st.className = "status"; st.textContent = `Left ${hhmm(when(j))}` + (j.delay > 0 ? `, ${j.delay} min late` : ""); }
+      else if (j.delay > 0) { st.className = "status bad"; st.textContent = `Running ${j.delay} min late · expected ${hhmm(when(j))}`; }
+      else { st.className = "status good"; st.textContent = "On time"; }
+      if (j.platformChanged) st.textContent += ` · now platform ${j.platform}`;
+    }
+    status(); detailCells.push([null, j, status]);
+    const p = platBox(j);
+    hero.append(hl, h2, p, w, st);
+    inner.append(hero);
+
+    // Watch
+    const watching = state.watch && state.watch.key === j.key;
+    if (!isGone(j) || watching) {
+      const wb = el("button", "dwatch" + (watching ? " on" : ""), watching ? "Stop watching" : "Watch this train");
+      wb.addEventListener("click", () => { toggleWatch(j); renderDetail(); });
+      inner.append(wb);
+    }
+
+    // Trip: legs and changes.
+    if (j.trip && j.legs) {
+      const s = el("section", "sect"); s.append(el("h3", "", `Journey · ${j.dur}${j.dur ? " · " : ""}${j.changeText}`));
+      let prevArr = null;
+      for (const l of j.legs) {
+        if (l.walk) {
+          const mins = l.arrive && l.from && l.arrive.arr && l.from.dep ? Math.round((l.arrive.arr - l.from.dep) / 60) : null;
+          s.append(el("div", "change", "Walk" + (l.arrive && l.arrive.name ? " to " + l.arrive.name : "") + (mins ? ` · ${mins} min` : "")));
+          continue;
+        }
+        if (prevArr && l.from) {
+          const mins = l.from.dep && prevArr.arr ? Math.round((l.from.dep - (prevArr.arrX ?? prevArr.arr)) / 60) : null;
+          const c = el("div", "change"); c.append("Change at ", el("b", "", l.from.name));
+          if (l.from.platform) c.append(` to platform ${l.from.platform}`);
+          if (mins != null) c.append(` · ${mins} min to change`);
+          s.append(c);
+        }
+        const h = el("div", "legh"); h.append(badge(l), el("span", "", "towards " + l.to)); s.append(h);
+        const stops = l.stops && l.stops.length ? l.stops : [l.from, l.arrive].filter(Boolean);
+        s.append(stopList(stops, l.from && l.from.name, l.arrive && l.arrive.name));
+        prevArr = l.arrive;
+      }
+      inner.append(s);
+    }
+
+    // Train type and photo (one per train on a trip with changes).
+    const ts = el("section", "sect"); ts.append(el("h3", "", "The train"));
+    const rides = j.trip && j.legs ? j.legs.filter((l) => !l.walk) : [j];
+    rides.forEach((t) => ts.append(trainInfo(t, rides.length > 1 ? `${t.line} towards ${t.to}` : "")));
+    inner.append(ts);
+
+    // Route of this train (departure boards).
+    if (!j.trip && j.stops && j.stops.length > 1) {
+      const s = el("section", "sect"); s.append(el("h3", "", `Stops · ${j.stops.length - 1} after ${j.stops[0].name}`));
+      s.append(stopList(j.stops));
+      inner.append(s);
+    }
+
+    // Facts
+    const k = el("section", "sect"); k.append(el("h3", "", "Details"));
+    const dl = el("dl", "kv");
+    const add = (a, b) => { if (b) dl.append(el("dt", "", a), el("dd", "", b)); };
+    add("Date", fmtDay.format(new Date(j.planned * 1000)));
+    add("Departure", hhmm(j.planned) + (j.delay > 0 ? `, expected ${hhmm(when(j))}` : ""));
+    if (j.trip) add("Arrival", `${hhmm(j.arr)} at ${j.arrName}` + (j.arrDelay > 0 ? `, expected ${hhmm(j.arrX)}` : ""));
+    add("Platform", (j.platform || "not announced yet") + (j.platformChanged ? " (changed)" : ""));
+    add("Operator", j.operator);
+    add("Train number", j.trainNo);
+    k.append(dl);
+    inner.append(k);
+
+    body.append(inner);
+  }
+
+  // ---------- Watched train ----------
   let watchCount = null;
   function watchCountText(ts) { return ts - now() < COUNTDOWN_S ? countdown(ts) : untilText(ts); }
   function renderWatch() {
@@ -618,29 +990,24 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
     const w = state.watch;
     watchCount = null;
     if (!w) { box.hidden = true; document.title = "Departure Board"; return; }
-    const live = state.journeys.find((j) => j.key === w.key);
-    const expected = live ? live.expected : w.expected;
+    const live = findRow(w.key);
+    const expected = live ? when(live) : w.expected;
     if (expected < now() - 120) { state.watch = null; save(); box.hidden = true; document.title = "Departure Board"; return; }
     if (live) { Object.assign(w, { expected: live.expected, delay: live.delay, platform: live.platform, sub: live.sub }); save(); }
     box.replaceChildren();
     box.append(el("span", "label", "Watching"));
     box.append(el("span", "what", `${w.line} to ${w.to}`));
-    const det = el("span", "detail");
-    det.append(`${hhmm(w.planned)} from ${w.stationName} · platform ${w.platform || "–"}`);
-    if (w.delay > 0) { det.append(" · "); det.append(el("span", "late", "+" + w.delay + " min late")); }
-    else if (live) det.append(" · on time");
-    if (w.trip && w.sub) det.append(el("br"), w.sub);
+    const det = el("span", "wdet");
+    det.append(`${hhmm(w.planned)} · platform ${w.platform || "–"}`);
+    if (w.delay > 0) { det.append(" · "); det.append(el("span", "late", "+" + w.delay + " min")); }
     box.append(det);
-    const c = el("span", "count");
-    const num = el("span", "", watchCountText(expected));
-    c.append(num, el("small", "", "leaves " + hhmm(expected)));
+    const num = el("span", "count", watchCountText(expected));
     watchCount = [num, expected];
-    box.append(c);
-    const tb = trainBlock(w);
-    if (tb) box.append(tb);
-    const stop = el("button", "stop", "Stop watching");
-    stop.addEventListener("click", () => { state.watch = null; save(); render(); });
+    box.append(num);
+    const stop = el("button", "stop", "×"); stop.setAttribute("aria-label", "Stop watching");
+    stop.addEventListener("click", (e) => { e.stopPropagation(); state.watch = null; save(); render(); });
     box.append(stop);
+    box.onclick = () => openDetail(w.key, box);
     box.hidden = false;
     document.title = `${watchCountText(expected)} · ${w.line} ${w.to}`;
   }
@@ -655,17 +1022,25 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
     $("clock").textContent = fmtClock.format(new Date());
   }
 
-  // Every second: countdowns, clock and tab title, without rebuilding the list.
+  // Every second: countdowns, clock and tab title, without rebuilding the list
+  // (unless a train has just left, which moves it above the "now" line).
   function tick() {
     renderUpdated();
-    for (const [cell, j] of timeCells) fillTime(cell, j);
+    let moved = false;
+    for (const c of timeCells) {
+      fillWhen(c[0], c[1]);
+      if (isGone(c[1]) !== c[3]) moved = true;
+      c[2].setAttribute("aria-label", c[4]());
+    }
+    if (moved) renderList();
+    for (const [cell, j, fn] of detailCells) { if (cell) fillWhen(cell, j); if (fn) fn(); }
     if (watchCount) {
       watchCount[0].textContent = watchCountText(watchCount[1]);
       if (state.watch) document.title = `${watchCountText(watchCount[1])} · ${state.watch.line} ${state.watch.to}`;
     }
   }
 
-  function render() { renderModes(); renderList(); renderWatch(); renderUpdated(); syncInputs(); }
+  function render() { renderModes(); renderList(); renderWatch(); renderDetail(); renderUpdated(); syncInputs(); }
 
   // ---------- Actions ----------
   function bump(s) {
@@ -684,15 +1059,17 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
     bump(s); newSearch();
   }
   function newSearch() {
-    state.journeys = []; state.error = null; state.limit = isTrip() ? 6 : 30;
+    state.journeys = []; state.past = new Map(); state.pastAt = 0; state.error = null;
+    state.limit = isTrip() ? 6 : 30; pinNow = true;
     save(); loadBoard();
   }
   function toggleWatch(j) {
     if (state.watch && state.watch.key === j.key) state.watch = null;
     else state.watch = { key: j.key, stationName: state.from ? state.from.name : "", line: j.line, to: j.to,
-        planned: j.planned, expected: j.expected, delay: j.delay, platform: j.platform,
-        trainNo: j.trainNo, evu: j.evu, date: j.date, trip: isTrip(), sub: j.sub };
-    save(); render();
+        planned: j.planned, expected: j.expected, delay: j.delay, platform: j.platform, platformChanged: j.platformChanged,
+        longDistance: j.longDistance, livery: j.livery, operator: j.operator,
+        trainNo: j.trainNo, evu: j.evu, date: j.date, sub: j.sub };
+    save(); renderList(); renderWatch();
   }
 
   $("modes").addEventListener("click", (e) => {
@@ -700,11 +1077,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
     const m = b.dataset.mode;
     state.modes = state.modes.includes(m) ? state.modes.filter((x) => x !== m) : [...state.modes, m];
     if (!state.modes.length) state.modes = [m];
-    save(); loadBoard();
-  });
-  $("more").addEventListener("click", () => {
-    state.limit = isTrip() ? Math.min(16, state.limit + 4) : Math.min(120, state.limit + 30);
-    loadBoard({ quiet: true });
+    save(); renderModes(); newSearch();
   });
   $("swap").addEventListener("click", () => {
     if (!isTrip()) return;
@@ -731,22 +1104,22 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
     $("swap").disabled = !isTrip();
   }
 
-  function stationField(input, list, onPick, current) {
+  function stationField(input, listEl, onPick) {
     let results = [], heading = "", active = -1, timer = 0, seq = 0;
     function show() {
-      list.replaceChildren();
-      if (results.length && heading) { const h = el("li", "head", heading); h.setAttribute("role", "presentation"); list.append(h); }
+      listEl.replaceChildren();
+      if (results.length && heading) { const h = el("li", "head", heading); h.setAttribute("role", "presentation"); listEl.append(h); }
       results.forEach((r, i) => {
-        const li = el("li"); li.setAttribute("role", "option"); li.id = list.id + "-" + i;
+        const li = el("li"); li.setAttribute("role", "option"); li.id = listEl.id + "-" + i;
         li.append(el("span", "", r.name + (r.alias ? " (" + r.alias + ")" : "")));
         if (KIND[r.icon]) li.append(el("span", "kind " + r.icon, KIND[r.icon]));
         li.setAttribute("aria-selected", String(i === active));
         li.addEventListener("mousedown", (e) => { e.preventDefault(); choose(r); });
-        list.append(li);
+        listEl.append(li);
       });
-      list.hidden = !results.length;
+      listEl.hidden = !results.length;
       input.setAttribute("aria-expanded", String(!!results.length));
-      if (active >= 0) input.setAttribute("aria-activedescendant", list.id + "-" + active); else input.removeAttribute("aria-activedescendant");
+      if (active >= 0) input.setAttribute("aria-activedescendant", listEl.id + "-" + active); else input.removeAttribute("aria-activedescendant");
     }
     function showFrequent() {
       results = frequent(); heading = results.length ? "Frequent stations" : ""; active = -1; show();
@@ -754,7 +1127,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
     function close() { results = []; show(); }
     function choose(r) { close(); input.blur(); onPick(r); }
     input.addEventListener("focus", () => { input.select(); showFrequent(); });
-    input.addEventListener("click", () => { if (list.hidden) showFrequent(); });
+    input.addEventListener("click", () => { if (listEl.hidden) showFrequent(); });
     input.addEventListener("input", () => {
       clearTimeout(timer);
       const q = input.value.trim();
@@ -786,7 +1159,6 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
   // ---------- Timers ----------
   setInterval(() => { if (!document.hidden) loadBoard({ quiet: true }); }, REFRESH_MS);
   setInterval(tick, 1000);
-  setInterval(() => { renderList(); renderWatch(); }, 30000);
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden && state.loadedAt && Date.now() - state.loadedAt > REFRESH_MS) loadBoard({ quiet: true });
   });
@@ -796,7 +1168,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
   function showKeyStatus() {
     if (!TT) { keyStatus.textContent = ""; return; }
     keyStatus.className = "status " + (TT.authFailed() ? "bad" : TT.hasKey() ? "ok" : "");
-    keyStatus.textContent = TT.authFailed() ? "The formation service didn't accept this key. Check that it's the Train Formation Service key." : TT.hasKey() ? "Key saved. Train types are shown on the board." : "No key saved yet.";
+    keyStatus.textContent = TT.authFailed() ? "The formation service didn't accept this key. Check that it's the Train Formation Service key." : TT.hasKey() ? "Key saved. Tap a train to see its type and photo." : "No key saved yet.";
   }
   gear.addEventListener("click", () => {
     panel.hidden = !panel.hidden; gear.setAttribute("aria-expanded", String(!panel.hidden));
@@ -811,10 +1183,10 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; t
   function markGear() { gear.classList.toggle("alert", !!(TT && TT.authFailed())); }
   $("key-save").addEventListener("click", () => {
     if (!TT || !keyIn.value.trim()) { keyStatus.className = "status bad"; keyStatus.textContent = "Paste your key first."; return; }
-    TT.setKey(keyIn.value); closeSettings(); markGear(); render(); toast("Key saved. Train types will appear on the board.");
+    TT.setKey(keyIn.value); closeSettings(); markGear(); render(); toast("Key saved. Tap a train to see its type.");
   });
   $("key-clear").addEventListener("click", () => { if (TT) { TT.setKey(""); keyIn.value = ""; closeSettings(); markGear(); render(); toast("Key removed."); } });
-  if (TT) TT.onChange(() => { renderList(); renderWatch(); markGear(); if (!panel.hidden) showKeyStatus(); });
+  if (TT) TT.onChange(() => { renderDetail(); markGear(); if (!panel.hidden) showKeyStatus(); });
 
   state.limit = isTrip() ? 6 : 30;
   save();

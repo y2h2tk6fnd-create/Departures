@@ -14,25 +14,29 @@ Open the link above in Safari, tap **Share → Add to Home Screen**, then **Add*
 - **To** is optional. Fill it in to see the next trains from one station to the other, with arrival time, journey time and any changes. Clear it with × to go back to the departure board, or swap the two with ⇅.
 - Both fields suggest stations as you type. Tap a field to see your **four most-used stations**.
 - **Train / Tram / Bus / Boat / Cableway** choose what's shown. It starts with trains only.
-- **Tap a train to watch it.** A card at the top counts down to the real departure time, including any delay, and shows the platform. The browser tab title shows the countdown too. Tap the train again, or **Stop watching**, to clear it.
+- **Tap a train** to open its page: the countdown, platform and delay in large type, the train model with a photo, the number of cars and seats, every stop with its time and platform, and on a trip each change. Tap **Watch this train** there to pin it to the top of the board with a live countdown (also shown in the browser tab title).
+- **Scroll the board up** to see trains that left in the last hour, marked **Departed**. A red "Now" line separates them from upcoming trains, and **Back to now** jumps back.
 
-On the board:
+On the board, each card shows:
 
 | What you see | Meaning |
 |---|---|
-| Red **12′05″** instead of the time | Leaves in 12 minutes 5 seconds (shown for trains leaving within 20 minutes) |
-| **+3 min** in red under the time | The train is running 3 minutes late |
-| Platform box in red, "New pl." | The platform has changed |
+| Red **12′05″** | Leaves in 12 minutes 5 seconds (trains leaving within 20 minutes) |
+| **07:28** with "in 25′" | Departure time, for trains further off |
+| **Departed** | Already left (scroll up to see these) |
+| Red **+3′** | Running 3 minutes late |
+| Platform box in red, "Changed" | The platform has changed |
 | Red line badge (IC 1, IR 15, RE…) | Long-distance or regional express train |
 | Outlined line badge (S 1…) | S-Bahn, tram, bus and other local services |
-| White row with blue and red stripes | Léman Express |
-| White row with a red end and dark band | RE 33 |
+| White card with blue and red stripes | Léman Express |
+| White card with a red end and dark band | RE 33 |
+| "Arr. 07:44 · 39 min · direct" | On a From → To search: arrival, journey time and changes |
 
 All times are Swiss time, wherever you open the page.
 
 ## Train types and photos
 
-The board can show which train model runs each departure (FLIRT, Régiolis, FV-Dosto, KISS and so on), and the "Watching" card shows a photo of it with the number of cars and seats. This uses SBB's Train Formation Service, which needs a free personal key:
+The board can show which train model runs each departure (FLIRT, Régiolis, FV-Dosto, KISS and so on), and each train's page shows a photo of it with the number of cars and seats. This uses SBB's Train Formation Service, which needs a free personal key:
 
 1. Sign in at [api-manager.opentransportdata.swiss](https://api-manager.opentransportdata.swiss/) and copy your **Train Formation Service** key.
 2. In the app, tap **Settings**, paste the key and tap **Save key**.
