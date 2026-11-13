@@ -192,9 +192,13 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 }
 .detail .inner { position: relative; z-index: 1; max-width: 640px; margin: 0 auto; display: grid; gap: 12px; }
 /* Photo banner: the train across the top, fading into the page; the countdown card overlaps its bottom. */
-.banner { position: absolute; z-index: 0; left: 0; right: 0; top: 0; height: calc(300px + env(safe-area-inset-top, 0px)); background: var(--board) center 55% / cover no-repeat; }
-.banner::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, rgb(0 0 0 / .5) 0%, rgb(0 0 0 / 0) 26%, rgb(0 0 0 / 0) 42%, var(--bg) 100%); }
-.detail.has-banner #d-body { margin-top: 168px; }
+/* Photo banner: the whole photo (3:2) across the width, fading into the page below it;
+   the countdown card overlaps only its bottom edge. On wide screens the height is capped. */
+.detail { --bh: min(66.667vw, 420px); }
+.banner { position: absolute; z-index: 0; left: 0; right: 0; top: 0; height: calc(var(--bh) + 40px); background: var(--bg); }
+.banner::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: var(--bh); background: var(--photo) center 60% / cover no-repeat; }
+.banner::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, rgb(0 0 0 / .45) 0, rgb(0 0 0 / 0) 70px, rgb(0 0 0 / 0) calc(var(--bh) - 36px), var(--bg) calc(var(--bh) + 36px)); }
+.detail.has-banner #d-body { margin-top: calc(var(--bh) - max(8px, env(safe-area-inset-top, 0px)) - 56px - 10px); }
 .detail.has-banner .back { color: #ffffff; background: rgb(0 0 0 / .45); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border-radius: 999px; padding: 7px 14px 7px 6px; }
 .detail.has-banner .hero { box-shadow: 0 12px 32px rgb(0 0 0 / .35); }
 .dbar { display: flex; align-items: center; gap: 8px; min-height: 44px; }
@@ -1051,7 +1055,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     }
     const banner = $("d-banner");
     banner.hidden = !photo;
-    banner.style.backgroundImage = photo ? `url("${photo.src}")` : "";
+    banner.style.setProperty("--photo", photo ? `url("${photo.src}")` : "none");
     banner.setAttribute("role", "img");
     banner.setAttribute("aria-label", photo ? "Photo of the train" : "");
     $("detail").classList.toggle("has-banner", !!photo);
