@@ -171,14 +171,19 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .now-line::after { content: ""; flex: 1; height: 2px; background: var(--accent); }
 .now-line span { order: 0; }
 
-/* Léman Express and RE 33: same card, with a livery band along the bottom and a livery-coloured badge. */
-.card.liv { padding-bottom: 17px; }
-.card.liv::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 5px; }
-.card.liv-lex::after { background: repeating-linear-gradient(115deg, #1f4e9c 0 30px, transparent 30px 34px, #e30613 34px 64px, transparent 64px 68px); }
-.card.liv-re33::after { background: repeating-linear-gradient(90deg, #3a3a3a 0 46px, #d8232a 46px 54px); }
+/* Livery stripe along the top: a gradient in the colours of the train. */
+:root { --g-lex: linear-gradient(90deg, #1f4e9c 0%, #1f4e9c 18%, #8a3a8f 50%, #e30613 82%, #e30613 100%);
+        --g-re33: linear-gradient(90deg, #d8232a 0%, #d8232a 22%, #7a1d22 58%, #2f2f2f 100%);
+        --g-sncf: linear-gradient(90deg, #8c1d64 0%, #c4004a 45%, #e4002b 70%, #f05a14 100%); }
+.card.liv { padding-top: 17px; }
+.card.liv::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 5px; }
+.card.liv-lex::after { background: var(--g-lex); }
+.card.liv-re33::after { background: var(--g-re33); }
+.card.liv-sncf::after { background: var(--g-sncf); }
 .card.gone.liv::after { opacity: .45; }
 .liv-lex .badge { background: #1f4e9c; color: #ffffff; border-color: #1f4e9c; }
 .liv-re33 .badge { background: #d8232a; color: #ffffff; border-color: #d8232a; }
+.liv-sncf .badge { background: linear-gradient(90deg, #8c1d64, #d0003c); color: #ffffff; border-color: transparent; }
 
 .empty, .error { padding: 28px 18px; color: var(--muted); text-align: center; }
 .error { color: var(--late); background: var(--late-bg); border-radius: 10px; }
@@ -197,7 +202,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .detail { --bh: min(66.667vw, 420px); }
 .banner { position: absolute; z-index: 0; left: 0; right: 0; top: 0; height: calc(var(--bh) + 40px); background: var(--bg); }
 .banner::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: var(--bh); background: var(--photo) center 60% / cover no-repeat; }
-.banner::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, rgb(0 0 0 / .45) 0, rgb(0 0 0 / 0) 70px, rgb(0 0 0 / 0) calc(var(--bh) - 36px), var(--bg) calc(var(--bh) + 36px)); }
+.banner::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, rgb(0 0 0 / .45) 0, rgb(0 0 0 / 0) 70px, rgb(0 0 0 / 0) calc(var(--bh) - 80px), var(--bg) calc(var(--bh) - 2px), var(--bg) 100%); }
 .detail.has-banner #d-body { margin-top: calc(var(--bh) - max(8px, env(safe-area-inset-top, 0px)) - 56px - 10px); }
 .detail.has-banner .back { color: #ffffff; background: rgb(0 0 0 / .45); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border-radius: 999px; padding: 7px 14px 7px 6px; }
 .detail.has-banner .hero { box-shadow: 0 12px 32px rgb(0 0 0 / .35); }
@@ -226,9 +231,10 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .hero .status.bad { color: var(--board-fg); }
 .hero .status.good { color: var(--board-fg); }
 .hero.liv { border-top: 0; padding-top: 28px; }
-.hero.liv::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 10px; }
-.hero.liv-lex::before { background: repeating-linear-gradient(115deg, #1f4e9c 0 40px, #ffffff 40px 46px, #e30613 46px 86px, #ffffff 86px 92px); }
-.hero.liv-re33::before { background: repeating-linear-gradient(90deg, #4a4a4a 0 56px, #d8232a 56px 66px); }
+.hero.liv::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 8px; }
+.hero.liv-lex::before { background: var(--g-lex); }
+.hero.liv-re33::before { background: var(--g-re33); }
+.hero.liv-sncf::before { background: var(--g-sncf); }
 .sect { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 10px; min-width: 0; }
 .sect h3 { margin: 0; font: 600 11px/1 var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 .sect .note { color: var(--muted); font-size: 14px; margin: 0; }
@@ -476,7 +482,9 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
       cat, num,
       line: (cat + (num ? " " + num : "")).trim() || j.name || "?",
       longDistance: /^(IC|ICE|IR|EC|EN|RE|TGV|RJX?|NJ|PE|IRE|EXT)/.test(cat),
-      livery: /^L\d+$/i.test(num) || /^SL\d*$/i.test(cat) ? "lex" : (cat === "RE" && num === "33" ? "re33" : ""),
+      livery: /^L\d+$/i.test(num) || /^SL\d*$/i.test(cat) ? "lex"
+            : cat === "RE" && num === "33" ? "re33"
+            : /SNCF/i.test(j.operator || "") || /^(TER|TGV|OUIGO|INOUI|TER200)$/i.test(cat) ? "sncf" : "",
       operator: j.operator || "",
       trainNo: /^\d+$/.test(String(j.name || "")) ? String(parseInt(j.name, 10)) : null,
       evu: TT ? TT.evuFor(j.operator) : null,
