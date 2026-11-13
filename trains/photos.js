@@ -66,6 +66,18 @@ window.TRAIN_PHOTOS = {
   "license": "CC BY-SA 3.0",
   "source": "https://commons.wikimedia.org/wiki/File:SBB_Re_460_Schottikon_alternate_crop.jpg"
  },
+ "ice": {
+  "src": "trains/ice.jpg",
+  "credit": "Smiley.toerist",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Basel_SBB_Bahnhof_2022_3.jpg"
+ },
+ "ice4": {
+  "src": "trains/ice4.jpg",
+  "credit": "Ermell",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Fulda_Bahnhof_DBAG_Class_412-20230716-RM-162420.jpg"
+ },
  "icn": {
   "src": "trains/icn.jpg",
   "credit": "Joachim Lutz",
@@ -89,6 +101,12 @@ window.TRAIN_PHOTOS = {
   "credit": "Kabelleger / David Gubler",
   "license": "Public domain",
   "source": "https://commons.wikimedia.org/wiki/File:BLS_RABe_535_Loetschberger.jpg"
+ },
+ "lyria": {
+  "src": "trains/lyria.jpg",
+  "credit": "Ibex73",
+  "license": "CC BY 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:TGV_Lyria,_Pasilly,_2026.jpg"
  },
  "mika": {
   "src": "trains/mika.jpg",

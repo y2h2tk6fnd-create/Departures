@@ -159,5 +159,26 @@
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:L02_493_Bf_Zweisimmen,_RABe_528_102.jpg",
   "file": "File:L02 493 Bf Zweisimmen, RABe 528 102.jpg"
+ },
+ "lyria": {
+  "src": "trains/lyria.jpg",
+  "credit": "Ibex73",
+  "license": "CC BY 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:TGV_Lyria,_Pasilly,_2026.jpg",
+  "file": "File:TGV Lyria, Pasilly, 2026.jpg"
+ },
+ "ice4": {
+  "src": "trains/ice4.jpg",
+  "credit": "Ermell",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Fulda_Bahnhof_DBAG_Class_412-20230716-RM-162420.jpg",
+  "file": "File:Fulda Bahnhof DBAG Class 412-20230716-RM-162420.jpg"
+ },
+ "ice": {
+  "src": "trains/ice.jpg",
+  "credit": "Smiley.toerist",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Basel_SBB_Bahnhof_2022_3.jpg",
+  "file": "File:Basel SBB Bahnhof 2022 3.jpg"
  }
 }

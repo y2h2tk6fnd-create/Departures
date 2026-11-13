@@ -897,10 +897,20 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     const r = liveRoutes.get(k);
     if (!r || (r.state !== "loading" && Date.now() - r.at > 60000)) fetchLiveRoute(k, t, plan, r);
     const live = liveRoutes.get(k);
-    if (live && live.stops) return { stops: withPlatforms(live.stops, plan), full: true, live: true };
+    if (live && live.stops) return { stops: extend(withPlatforms(live.stops, plan), t.stops), full: true, live: true };
     const stops = plan.filter((p) => p.name).map((p) => ({ name: p.name, arr: p.arr, dep: p.dep, arrX: null, depX: null,
       arrDelay: 0, depDelay: 0, delay: 0, platform: p.platform, platformChanged: false }));
-    return stops.length > 1 ? { stops, full: true, loading: !live || live.state === "loading" } : { ...fallback, why: "none" };
+    return stops.length > 1 ? { stops: extend(stops, t.stops), full: true, loading: !live || live.state === "loading" } : { ...fallback, why: "none" };
+  }
+  // The formation data can stop at the border (a TGV to Paris ends at Bellegarde there):
+  // carry on with the stops from this station's board beyond the last station both know.
+  function extend(full, own) {
+    if (!own || own.length < 2) return full;
+    for (let k = own.length - 1; k >= 0; k--) {
+      const at = full.findIndex((x) => x.name === own[k].name);
+      if (at >= 0) return k === own.length - 1 ? full : full.slice(0, at + 1).concat(own.slice(k + 1));
+    }
+    return full;
   }
   // The live data only has a platform for some stops; the formation data has the planned one for each.
   function withPlatforms(stops, plan) {
