@@ -15,6 +15,7 @@ Open the link above in Safari, tap **Share → Add to Home Screen**, then **Add*
 - Both fields suggest stations as you type. Tap a field to see your **four most-used stations**.
 - **Train / Tram / Bus / Boat / Cableway** choose what's shown. It starts with trains only.
 - **Tap a train** to open its page: the countdown, platform and delay in large type, the train model with a photo, the number of cars and seats, and the whole line from where the train started to where it ends. A red marker shows **where the train is right now** (at a station, or between two), with a line like "1 stop before Genève". Every stop shows its arrival and departure time (including delays) and platform; your station has a ring on the line; on a From → To trip, your part of the line is dotted. The first and last stations are shown as a bar.
+- **Keep track of a train you'll take:** on its page, tap **＋ Add to my trips**. Saved trains appear under the **☰ menu** (top right; the red number counts upcoming ones) with a live countdown, delay and platform, even after you search other stations. Tap one to open its page, or **Remove** it. Trips disappear on their own half an hour after arrival.
 - **Scroll the board up** to see trains that left in the last hour, marked **Departed**. A red "Now" line separates them from upcoming trains.
 
 On the board, each card shows:
@@ -40,7 +41,7 @@ All times are Swiss time, wherever you open the page.
 The board can show which train model runs each departure (FLIRT, Régiolis, FV-Dosto, KISS and so on), and each train's page shows a photo of it and its whole line, including the stops before yours with the number of cars and seats. This uses SBB's Train Formation Service, which needs a free personal key:
 
 1. Sign in at [api-manager.opentransportdata.swiss](https://api-manager.opentransportdata.swiss/) and copy your **Train Formation Service** key.
-2. In the app, tap **Settings**, paste the key and tap **Save key**.
+2. In the app, open the **☰ menu**, tap **Settings**, paste the key and tap **Save key**.
 
 The key is stored only on your device. Train types are published for SBB, BLS, SOB, THURBO, TPF, TRN, Zentralbahn, RhB, MBC and SZU trains, plus the trains they run jointly with France, Italy and Germany. Some trains have no published formation; those simply show no type.
 
