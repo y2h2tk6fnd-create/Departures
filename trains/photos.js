@@ -98,9 +98,9 @@ window.TRAIN_PHOTOS = {
  },
  "kiss512": {
   "src": "trains/kiss512.jpg",
-  "credit": "Remontees",
+  "credit": "Samson Ng . D201@EAL",
   "license": "CC BY-SA 4.0",
-  "source": "https://commons.wikimedia.org/wiki/File:Rabe-511-kiss-gare-annemasse2.jpg"
+  "source": "https://commons.wikimedia.org/wiki/File:RABe_512_IR-Dosto_EMU_(54948662392).jpg"
  },
  "lotschberger": {
   "src": "trains/lotschberger.jpg",

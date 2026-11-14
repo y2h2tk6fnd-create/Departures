@@ -20,7 +20,7 @@ Train photos come from Wikimedia Commons, cropped and resized for the app. Each 
 | ice4 | [Fulda Bahnhof DBAG Class 412-20230716-RM-162420.jpg](https://commons.wikimedia.org/wiki/File:Fulda_Bahnhof_DBAG_Class_412-20230716-RM-162420.jpg) | Ermell | CC BY-SA 4.0 |
 | icn | [SBB RABDe 500 ICN (yyy A W).jpg](https://commons.wikimedia.org/wiki/File:SBB_RABDe_500_ICN_(yyy_A_W).jpg) | Joachim Lutz | CC BY-SA 4.0 |
 | kiss511 | [SBB RABe 511, St. Margrethen (1Y7A2216).jpg](https://commons.wikimedia.org/wiki/File:SBB_RABe_511,_St._Margrethen_(1Y7A2216).jpg) | Matti Blume | CC BY-SA 4.0 |
-| kiss512 | [Rabe-511-kiss-gare-annemasse2.jpg](https://commons.wikimedia.org/wiki/File:Rabe-511-kiss-gare-annemasse2.jpg) | Remontees | CC BY-SA 4.0 |
+| kiss512 | [RABe 512 IR-Dosto EMU (54948662392).jpg](https://commons.wikimedia.org/wiki/File:RABe_512_IR-Dosto_EMU_(54948662392).jpg) | Samson Ng . D201@EAL | CC BY-SA 4.0 |
 | lotschberger | [BLS RABe 535 Loetschberger.jpg](https://commons.wikimedia.org/wiki/File:BLS_RABe_535_Loetschberger.jpg) | Kabelleger / David Gubler | Public domain |
 | lyria | [TGV Lyria, Pasilly, 2026.jpg](https://commons.wikimedia.org/wiki/File:TGV_Lyria,_Pasilly,_2026.jpg) | Ibex73 | CC BY 4.0 |
 | mika | [L02 493 Bf Zweisimmen, RABe 528 102.jpg](https://commons.wikimedia.org/wiki/File:L02_493_Bf_Zweisimmen,_RABe_528_102.jpg) | Falk2 | CC BY-SA 4.0 |
