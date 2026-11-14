@@ -135,6 +135,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .card .when { grid-area: when; }
 .card .tripinfo { grid-area: trip; color: var(--muted); font-size: 13.5px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card .tripinfo b { color: var(--fg); font-weight: 600; }
+.card .tripinfo.wrap { white-space: normal; }
 .card .plat { grid-area: plat; }
 
 .badge {
@@ -528,7 +529,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     if (!p) return null;
     const st = p.station || p.location || {};
     const d = timing(p, "departureTimestamp", "departure"), a = timing(p, "arrivalTimestamp", "arrival");
-    return { name: st.name || "", dep: d.planned, depX: d.expected, arr: a.planned, arrX: a.expected,
+    return { name: st.name || "", id: st.id ? String(st.id) : "", dep: d.planned, depX: d.expected, arr: a.planned, arrX: a.expected,
              depDelay: d.planned != null ? d.delay : 0, arrDelay: a.planned != null ? a.delay : 0,
              delay: Math.max(d.planned != null ? d.delay : 0, a.planned != null ? a.delay : 0), ...platformOf(p) };
   }
@@ -738,6 +739,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
   }
 
   function card(j, cells = timeCells) {
+    if (cells === menuCells) { const ph = tripPhase(j); if (ph.kind !== "wait") return onboardCard(j, ph, cells); }
     const cls = ["card"];
     if (j.livery) cls.push("liv", "liv-" + j.livery);
     if (isGone(j)) cls.push("gone");
@@ -761,7 +763,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     r.append(platBox(j));
     const label = () => `${j.line} to ${j.to}, ${w.dataset.label}, platform ${j.platform || "unknown"}${j.dur ? ", journey " + j.dur : ""}${j.arr != null ? ", arrives " + (j.trip ? j.arrName + " " : "") + hhmm(j.arrX ?? j.arr) : ""}${j.trip ? ", " + j.changeText : ""}. Show details.`;
     r.setAttribute("aria-label", label());
-    cells.push([w, j, r, isGone(j), label]);
+    cells.push([w, j, r, isGone(j), label, null, cells === menuCells ? phaseKey(j) : ""]);
     const open = () => openDetail(j.key, r);
     r.addEventListener("click", open);
     r.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } });
@@ -1094,7 +1096,17 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
       if (j.dur) st.append(` · journey ${j.dur}`);
     }
     status(); detailCells.push([null, j, status]);
-    const p = platBox(j);
+    let p = platBox(j);
+    detailPhase = isSaved(j.key) ? phaseKey(j) : "";
+    const ph = isSaved(j.key) ? tripPhase(j) : null;
+    if (ph && ph.kind !== "wait") {
+      // On board: the countdown runs to the stop where you get off (or to your connection), with its platform.
+      detailCells.length = 0;
+      fillOnboard(w, j);
+      detailCells.push([null, j, () => fillOnboard(w, j)]);
+      p = platBox(phasePlat(ph));
+      st.className = "status good"; st.replaceChildren(onboardText(ph, true));
+    }
     hero.append(hl, h2, p, w, st);
     const saved = isSaved(j.key);
     if (saved || !isGone(j)) {
@@ -1178,7 +1190,13 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
       c[2].setAttribute("aria-label", c[4]());
     }
     if (moved) renderList();
-    if (!menu.hidden) for (const c of menuCells) fillWhen(c[0], c[1]);
+    let phaseMoved = false;
+    for (const c of menuCells) {
+      if (c[5]) c[5](c[0], c[1]); else if (!menu.hidden) fillWhen(c[0], c[1]);
+      if (c[6] !== phaseKey(c[1])) phaseMoved = true;
+    }
+    if (phaseMoved) renderTrips();
+    if (state.detail && isSaved(state.detail) && detailPhase !== phaseKey(findRow(state.detail) || {})) renderDetail();
     for (const [cell, j, fn] of detailCells) { if (cell) fillWhen(cell, j); if (fn) fn(); }
     if (state.detail && Math.floor(Date.now() / 1000) % 5 === 0) refreshRoutes();
   }
@@ -1299,6 +1317,81 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 
   // ---------- My trips ----------
   const menuCells = [];
+  let detailPhase = "";
+  // The rides of a saved trip, each from where you board to where you get off.
+  function legsOf(t) {
+    if (t.trip && t.legs) {
+      const rides = t.legs.filter((l) => !l.walk && l.from && l.arrive).map((l) => ({ l, line: l.line, to: l.to,
+        from: l.from.name, fromId: l.from.id, dep: l.from.dep, depX: l.from.depX, depDelay: l.from.depDelay || 0, depPlat: l.from.platform, depPlatChanged: l.from.platformChanged,
+        place: l.arrive.name, arr: l.arrive.arr, arrX: l.arrive.arrX, arrDelay: l.arrive.arrDelay || 0, arrPlat: l.arrive.platform, arrPlatChanged: l.arrive.platformChanged }));
+      if (rides[0]) Object.assign(rides[0], { depX: t.expected, depDelay: t.delay || 0, depPlat: t.platform, depPlatChanged: t.platformChanged });
+      return rides;
+    }
+    const last = t.stops && t.stops.length > 1 ? t.stops[t.stops.length - 1] : null;
+    return [{ l: t, line: t.line, to: t.to, from: t.fromName, fromId: t.fromId, dep: t.planned, depX: t.expected, depDelay: t.delay || 0, depPlat: t.platform, depPlatChanged: t.platformChanged,
+      place: last ? last.name : t.to, arr: t.arr ?? (last && last.arr), arrX: t.arrX ?? (last && last.arrX), arrDelay: t.arrDelay || (last && last.arrDelay) || 0,
+      arrPlat: last ? last.platform : "", arrPlatChanged: last ? last.platformChanged : false }];
+  }
+  // Where you are on a saved trip: waiting to leave, on a train, changing trains, or arrived.
+  function tripPhase(t) {
+    const legs = legsOf(t), n = now();
+    for (let i = 0; i < legs.length; i++) {
+      const L = legs[i], dep = L.depX ?? L.dep, arr = L.arrX ?? L.arr;
+      if (dep != null && n < dep + GONE_AFTER_S) return { kind: i === 0 ? "wait" : "change", i, L, legs };
+      if (arr != null && n < arr) return { kind: "ride", i, L, legs, next: legs[i + 1] || null };
+    }
+    return { kind: "arrived", i: legs.length - 1, L: legs[legs.length - 1], legs };
+  }
+  const phaseKey = (t) => { if (!t || t.planned == null) return ""; const ph = tripPhase(t); return ph.kind + ph.i; };
+  const phasePlat = (ph) => ph.kind === "change" ? { platform: ph.L.depPlat, platformChanged: ph.L.depPlatChanged } : { platform: ph.L.arrPlat, platformChanged: ph.L.arrPlatChanged };
+  const longCount = (ts) => ts - now() < 3600 ? countdown(ts) : untilText(ts);
+  function fillOnboard(cell, t) {
+    const ph = tripPhase(t), L = ph.L;
+    cell.replaceChildren();
+    if (ph.kind === "arrived") {
+      cell.append(el("span", "big gone", "Arrived"), el("span", "meta", `${L.place} · ${hhmm(L.arrX ?? L.arr)}`));
+      cell.dataset.label = `arrived at ${L.place}`;
+      return;
+    }
+    const ts = ph.kind === "change" ? L.depX ?? L.dep : L.arrX ?? L.arr;
+    const c = longCount(ts);
+    const meta = el("span", "meta", (ph.kind === "change" ? "dep. " : "arr. ") + hhmm(ts));
+    const d = ph.kind === "change" ? L.depDelay : L.arrDelay;
+    if (d > 0) meta.append(delayEl(d));
+    cell.append(el("span", "big " + (c === "now" ? "now" : "countdown"), c), meta);
+    cell.dataset.label = ph.kind === "change" ? `connection leaves in ${c}` : `arriving at ${L.place} in ${c}`;
+  }
+  function onboardText(ph, long) {
+    const L = ph.L, span = el("span");
+    if (ph.kind === "arrived") { span.append(`Arrived at ${L.place}` + (L.arrPlat ? ` on platform ${L.arrPlat}` : "")); return span; }
+    if (ph.kind === "change") {
+      span.append(long ? `Change at ${L.from}: ` : "", el("b", "", L.line), ` towards ${L.to}` + (L.depPlat ? ` from platform ${L.depPlat}` : ""));
+      return span;
+    }
+    span.append(long ? `On board · arriving at ${L.place}` : `Arriving`, L.arrPlat ? " on platform " : "", L.arrPlat ? el("b", "", L.arrPlat) : "");
+    if (ph.next) {
+      const N = ph.next, ndep = N.depX ?? N.dep, mins = ndep && (L.arrX ?? L.arr) ? Math.round((ndep - (L.arrX ?? L.arr)) / 60) : null;
+      span.append(` · then `, el("b", "", N.line), N.depPlat ? ` from platform ` : "", N.depPlat ? el("b", "", N.depPlat) : "", ` at ${hhmm(ndep)}` + (mins != null ? ` (${mins} min to change)` : ""));
+    }
+    return span;
+  }
+  function onboardCard(j, ph, cells) {
+    const leg = ph.L.l || j;
+    const r = el("div", "card" + (leg.livery ? " liv liv-" + leg.livery : "") + (ph.kind === "arrived" ? " gone" : ""));
+    r.dataset.key = j.key; r.tabIndex = 0; r.setAttribute("role", "button");
+    const head = el("div", "head");
+    head.append(badge(leg), el("span", "dest", ph.kind === "change" ? `Change at ${ph.L.from}` : ph.kind === "arrived" ? ph.L.place : `→ ${ph.L.place}`));
+    const w = el("div", "when"); fillOnboard(w, j);
+    const ti = el("div", "tripinfo wrap"); ti.append(onboardText(ph, false));
+    r.append(head, w, ti, platBox(phasePlat(ph)));
+    const label = () => `${leg.line}, ${w.dataset.label}${ph.L.arrPlat && ph.kind === "ride" ? ", arriving on platform " + ph.L.arrPlat : ""}. Show details.`;
+    r.setAttribute("aria-label", label());
+    cells.push([w, j, r, false, label, fillOnboard, phaseKey(j)]);
+    const open = () => openDetail(j.key, r);
+    r.addEventListener("click", open);
+    r.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } });
+    return r;
+  }
   const isSaved = (key) => state.trips.some((t) => t.key === key);
   const tripEnd = (t) => Math.max(when(t) || 0, t.arrX ?? t.arr ?? 0);
   function toggleTrip(j) {
@@ -1352,12 +1445,31 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
           if (hit) live = fromBoard(hit);
         } catch {}
       }
+      if (t.trip && t.legs) { await refreshLegs(t); changed = true; }
       if (!live) continue;
       for (const f of LIVE_FIELDS) t[f] = live[f];
       if (!t.trip && live.stops) Object.assign(t, { stops: live.stops, arr: live.arr, arrX: live.arrX, arrDelay: live.arrDelay, dur: live.dur });
       changed = true;
     }
     if (changed) { save(); renderTrips(); if (state.detail && isSaved(state.detail) && !state.journeys.some((r) => r.key === state.detail)) renderDetail(); }
+  }
+  // Each ride of a multi-train trip: its departure, platform and arrival at your stop, from the board where you board it.
+  async function refreshLegs(t) {
+    const rides = t.legs.filter((l) => !l.walk && l.from && l.arrive);
+    for (const l of rides) {
+      const dep = l.from.depX ?? l.from.dep, arr = l.arrive.arrX ?? l.arrive.arr;
+      if (!l.from.id || !l.trainNo || arr < now() - 300 || dep > now() + 3 * 3600) continue;
+      try {
+        const at = new Date((l.from.dep - 120) * 1000);
+        const data = await getJSON("/stationboard", [["id", l.from.id], ["datetime", fmtDate.format(at) + " " + fmtTime.format(at)], ["limit", "12"]]);
+        const hit = (data.stationboard || []).find((x) => String(parseInt(x.name, 10)) === l.trainNo);
+        if (!hit) continue;
+        const b = fromBoard(hit);
+        Object.assign(l.from, { depX: b.expected, depDelay: b.delay, platform: b.platform || l.from.platform, platformChanged: b.platformChanged });
+        const s = (b.stops || []).find((x) => x.name === l.arrive.name);
+        if (s) Object.assign(l.arrive, { arrX: s.arrX, arrDelay: s.arrDelay, platform: s.platform || l.arrive.platform, platformChanged: s.platformChanged || l.arrive.platformChanged });
+      } catch {}
+    }
   }
   setInterval(() => { if (!document.hidden && state.trips.length) refreshTrips(); }, 60000);
 
