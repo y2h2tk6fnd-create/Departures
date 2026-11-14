@@ -126,7 +126,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
   position: relative; overflow: hidden; flex: none;
   background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
   padding: 12px 12px 12px 14px; cursor: pointer;
-  display: grid; grid-template-columns: minmax(0, 1fr) 56px; grid-template-areas: "head plat" "when plat" "trip plat";
+  display: grid; grid-template-columns: minmax(0, 1fr) 56px; grid-template-areas: "head plat" "when plat" "trip plat" "prog prog";
   gap: 6px 12px; align-items: center;
 }
 .card:hover { border-color: var(--muted); }
@@ -175,7 +175,8 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 /* Livery stripe along the top: a gradient in the colours of the train. */
 :root { --g-lex: linear-gradient(90deg, #1f4e9c 0%, #1f4e9c 18%, #8a3a8f 50%, #e30613 82%, #e30613 100%);
         --g-re33: linear-gradient(90deg, #d8232a 0%, #d8232a 22%, #7a1d22 58%, #2f2f2f 100%);
-        --g-sncf: linear-gradient(90deg, #8c1d64 0%, #c4004a 45%, #e4002b 70%, #f05a14 100%); }
+        --g-sncf: linear-gradient(90deg, #8c1d64 0%, #c4004a 45%, #e4002b 70%, #f05a14 100%);
+        --trip: #39ff6a; --trip-ink: #04210c; }   /* My trips: fluorescent green, with dark text on it */
 .card.liv { padding-top: 17px; }
 .card.liv::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 5px; }
 .card.liv-lex::after { background: var(--g-lex); }
@@ -213,7 +214,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .hero {
   position: relative; overflow: hidden;
   background: var(--board); color: var(--board-fg); border-radius: 16px; padding: 18px 18px 20px; border-top: 5px solid var(--accent);
-  display: grid; grid-template-columns: minmax(0, 1fr) 88px; grid-template-areas: "line plat" "dest plat" "when when" "status status" "add add"; gap: 8px 16px;
+  display: grid; grid-template-columns: minmax(0, 1fr) 88px; grid-template-areas: "line plat" "dest plat" "when when" "status status" "prog prog" "add add"; gap: 8px 16px;
 }
 .hero .hline { grid-area: line; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .hero .badge { font-size: 20px; padding: 6px 10px; }
@@ -231,8 +232,10 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .hero .status { grid-area: status; font-weight: 600; font-size: 14px; color: var(--board-muted); }
 .hero .status.bad { color: var(--board-fg); }
 .hero .status.good { color: var(--board-fg); }
-.addtrip { grid-area: add; margin-top: 8px; border: 1.5px solid rgb(255 255 255 / .35); background: transparent; color: var(--board-fg); border-radius: 12px; padding: 12px; font-weight: 600; font-size: 15.5px; }
-.addtrip.on { background: var(--board-fg); color: var(--board); border-color: transparent; }
+.addtrip { grid-area: add; justify-self: start; margin-top: 6px; display: inline-flex; align-items: center; gap: 7px; border: 1.5px solid var(--trip); background: transparent; color: var(--trip); border-radius: 999px; padding: 7px 16px 7px 13px; font: 700 13px/1 var(--font-body); letter-spacing: .12em; }
+.addtrip::before { content: ""; width: 0; height: 0; border-left: 8px solid currentColor; border-top: 5px solid transparent; border-bottom: 5px solid transparent; }
+.addtrip.on { background: var(--trip); color: var(--trip-ink); }
+.addtrip.on::before { display: none; }
 .hero.liv { border-top: 0; padding-top: 28px; }
 .hero.liv::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 8px; }
 .hero.liv-lex::before { background: var(--g-lex); }
@@ -304,13 +307,23 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .menu-btn .bars::before { position: absolute; top: -6px; }
 .menu-btn .bars::after { position: absolute; top: 6px; }
 .menu-btn.alert { border-color: var(--accent); }
-.menu-btn .count { position: absolute; top: -7px; right: -7px; min-width: 19px; height: 19px; padding: 0 5px; border-radius: 10px; background: var(--accent); color: #ffffff; font: 700 11px/19px var(--font-body); text-align: center; }
+.menu-btn .count { position: absolute; top: -7px; right: -7px; min-width: 19px; height: 19px; padding: 0 5px; border-radius: 10px; background: var(--trip); color: var(--trip-ink); font: 700 11px/19px var(--font-body); text-align: center; }
 .menu { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 12px; }
-.menu h2 { margin: 0; font: 700 20px/1.2 var(--font-display); }
+.menu h2 { margin: 0; font: 700 20px/1.2 var(--font-display); display: flex; align-items: center; gap: 9px; }
+.menu h2::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--trip); box-shadow: 0 0 8px var(--trip); }
+.progress { grid-area: prog; display: grid; gap: 5px; margin-top: 4px; }
+.progress .bar { position: relative; height: 7px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.progress .bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: var(--trip); box-shadow: 0 0 8px var(--trip); }
+.progress .bar s { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--surface); z-index: 1; }
+.progress .ends { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; color: var(--muted); }
+.progress .ends span:last-child { text-align: right; }
+.hero .progress .bar { background: rgb(255 255 255 / .18); }
+.hero .progress .bar s { background: var(--board); }
+.hero .progress .ends { color: var(--board-muted); }
 .trips { display: grid; gap: 14px; }
 .trip-item { display: grid; gap: 6px; }
 .trip-meta { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 0 4px; color: var(--muted); font-size: 13px; }
-.trip-meta button { border: 0; background: none; color: var(--accent); font-weight: 600; font-size: 13.5px; padding: 4px 0 4px 8px; }
+.trip-meta button { border: 0; background: none; color: var(--muted); text-decoration: underline; text-underline-offset: 2px; font-weight: 600; font-size: 13.5px; padding: 4px 0 4px 8px; }
 .menu .none { margin: 0; color: var(--muted); font-size: 14px; }
 .menu-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; border: 0; border-top: 1px solid var(--line); background: none; padding: 12px 2px 0; font-weight: 600; font-size: 15.5px; text-align: left; }
 .menu-row span { color: var(--muted); font-weight: 400; font-size: 13px; }
@@ -1103,15 +1116,18 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
       // On board: the countdown runs to the stop where you get off (or to your connection), with its platform.
       detailCells.length = 0;
       fillOnboard(w, j);
-      detailCells.push([null, j, () => fillOnboard(w, j)]);
+      var heroProg = progressEl(j);
+      detailCells.push([null, j, () => { fillOnboard(w, j); heroProg[1](); }]);
       p = platBox(phasePlat(ph));
       st.className = "status good"; st.replaceChildren(onboardText(ph, true));
     }
     hero.append(hl, h2, p, w, st);
+    if (ph && ph.kind !== "wait") hero.append(heroProg[0]);
     const saved = isSaved(j.key);
     if (saved || !isGone(j)) {
-      const ab = el("button", "addtrip" + (saved ? " on" : ""), saved ? "✓ In my trips · tap to remove" : "＋ Add to my trips");
-      ab.addEventListener("click", () => { toggleTrip(j); renderDetail(); toast(isSaved(j.key) ? "Added to My trips (☰ menu)." : "Removed from My trips."); });
+      const ab = el("button", "addtrip" + (saved ? " on" : ""), saved ? "✓ TRACKING" : "START");
+      ab.setAttribute("aria-label", saved ? "Tracking this trip in My trips. Tap to stop tracking." : "Start: keep track of this train in My trips");
+      ab.addEventListener("click", () => { toggleTrip(j); renderDetail(); toast(isSaved(j.key) ? "Tracking — find it in My trips (☰ menu)." : "Stopped tracking."); });
       hero.append(ab);
     }
     inner.append(hero);
@@ -1375,6 +1391,26 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     }
     return span;
   }
+  // Progress along the whole trip, with a notch where you change trains.
+  function progressEl(t) {
+    const legs = legsOf(t), first = legs[0], last = legs[legs.length - 1];
+    const start = first.depX ?? first.dep, end = last.arrX ?? last.arr;
+    const box = el("div", "progress"), bar = el("div", "bar"), fill = el("i");
+    bar.append(fill);
+    if (start != null && end > start)
+      for (const L of legs.slice(1)) { const s = el("s"); s.style.left = (100 * ((L.dep - start) / (end - start))).toFixed(1) + "%"; bar.append(s); }
+    const ends = el("div", "ends");
+    ends.append(el("span", "", first.from || ""), el("span", "", last.place || ""));
+    box.append(bar, ends);
+    box.setAttribute("role", "progressbar"); box.setAttribute("aria-label", "Trip progress");
+    const update = () => {
+      const f = start != null && end > start ? Math.min(1, Math.max(0, (now() - start) / (end - start))) : 0;
+      fill.style.width = (100 * f).toFixed(2) + "%";
+      box.setAttribute("aria-valuenow", String(Math.round(100 * f)));
+    };
+    update();
+    return [box, update];
+  }
   function onboardCard(j, ph, cells) {
     const leg = ph.L.l || j;
     const r = el("div", "card" + (leg.livery ? " liv liv-" + leg.livery : "") + (ph.kind === "arrived" ? " gone" : ""));
@@ -1383,10 +1419,11 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     head.append(badge(leg), el("span", "dest", ph.kind === "change" ? `Change at ${ph.L.from}` : ph.kind === "arrived" ? ph.L.place : `→ ${ph.L.place}`));
     const w = el("div", "when"); fillOnboard(w, j);
     const ti = el("div", "tripinfo wrap"); ti.append(onboardText(ph, false));
-    r.append(head, w, ti, platBox(phasePlat(ph)));
+    const [prog, updateProg] = progressEl(j);
+    r.append(head, w, ti, platBox(phasePlat(ph)), prog);
     const label = () => `${leg.line}, ${w.dataset.label}${ph.L.arrPlat && ph.kind === "ride" ? ", arriving on platform " + ph.L.arrPlat : ""}. Show details.`;
     r.setAttribute("aria-label", label());
-    cells.push([w, j, r, false, label, fillOnboard, phaseKey(j)]);
+    cells.push([w, j, r, false, label, (cell, t) => { fillOnboard(cell, t); updateProg(); }, phaseKey(j)]);
     const open = () => openDetail(j.key, r);
     r.addEventListener("click", open);
     r.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } });
@@ -1416,14 +1453,14 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     $("trip-count").hidden = !n; $("trip-count").textContent = n;
     $("menu-btn").setAttribute("aria-label", `Menu: my trips${n ? " (" + n + ")" : ""} and settings`);
     const box = $("trips"); box.replaceChildren(); menuCells.length = 0;
-    if (!state.trips.length) { box.append(el("p", "none", "No trips yet. Open a train and tap ＋ Add to my trips to keep track of it here.")); return; }
+    if (!state.trips.length) { box.append(el("p", "none", "No trips yet. Open a train and tap START to keep track of it here.")); return; }
     for (const t of [...state.trips].sort((a, b) => a.planned - b.planned)) {
       const item = el("div", "trip-item");
       const c = card(t, menuCells);
       const meta = el("div", "trip-meta");
       const day = fmtDate.format(new Date(t.planned * 1000)) === fmtDate.format(new Date()) ? "today" : fmtDay.format(new Date(t.planned * 1000));
       meta.append(el("span", "", (t.trip ? `${t.fromName} → ${t.arrName}` : `from ${t.fromName || ""}`) + " · " + day));
-      const rm = el("button", "", "Remove"); rm.setAttribute("aria-label", `Remove ${t.line} to ${t.to} from my trips`);
+      const rm = el("button", "", "Stop tracking"); rm.setAttribute("aria-label", `Stop tracking ${t.line} to ${t.to}`);
       rm.addEventListener("click", () => { toggleTrip(t); if (state.detail === t.key) renderDetail(); });
       meta.append(rm);
       item.append(c, meta);
