@@ -322,6 +322,12 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .hero .progress .ends { color: var(--board-muted); }
 .trips { display: grid; gap: 14px; }
 .trip-item { display: grid; gap: 6px; }
+.trip-item + .trip-item { border-top: 1px solid var(--line); padding-top: 14px; }
+/* Inside My trips the section itself is the frame: no box around each trip. */
+.trips .card, .trips .card.liv, .trips .card.gone { background: none; border: 0; border-radius: 0; box-shadow: none; padding: 4px 0 0; }
+.trips .card::after { display: none; }
+.trips .card:hover { border: 0; }
+.trips .trip-meta { padding: 0; }
 .trip-meta { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 0 4px; color: var(--muted); font-size: 13px; }
 .trip-meta button { border: 0; background: none; color: var(--muted); text-decoration: underline; text-underline-offset: 2px; font-weight: 600; font-size: 13.5px; padding: 4px 0 4px 8px; }
 .menu .none { margin: 0; color: var(--muted); font-size: 14px; }
