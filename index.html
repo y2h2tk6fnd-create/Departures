@@ -291,6 +291,15 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .stops li.pos .ptext { grid-column: 2 / 5; font-size: 14px; font-weight: 600; }
 .stops li.pos .ptext span { font-weight: 400; color: var(--muted); }
 .stops-key { font-size: 12px; color: var(--muted); margin: 0; }
+/* Folded parts of the line: a dashed stretch with a count, tap to show the whole line. */
+.stops li.fold { min-height: 46px; padding: 4px 0; }
+.stops li.fold::before, .stops li.fold::after { left: 11px; width: 2px; background: repeating-linear-gradient(var(--muted) 0 4px, transparent 4px 9px); }
+.stops li.fold.top::before, .stops li.fold.bottom::after { display: none; }
+.stops li.fold.less::before { display: none; }
+.stops li:has(+ li.fold.less)::after { display: none; }
+.stops li.fold button { grid-column: 2 / 5; justify-self: start; text-align: left; border: 0; background: none; padding: 6px 0; color: var(--fg); font-weight: 600; font-size: 14px; }
+.stops li.fold button > span { text-decoration: underline; text-decoration-color: var(--muted); text-underline-offset: 3px; }
+.stops li.fold button small { display: block; margin-top: 2px; font-weight: 400; font-size: 12.5px; color: var(--muted); text-decoration: none; }
 @media (prefers-reduced-motion: no-preference) {
   .stops .tr { animation: pulse 1.6s ease-out infinite; }
   @keyframes pulse { 0% { box-shadow: 0 0 0 2px var(--accent), 0 0 0 2px rgb(216 35 42 / .45); } 100% { box-shadow: 0 0 0 2px var(--accent), 0 0 0 12px rgb(216 35 42 / 0); } }
@@ -1013,6 +1022,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
   // mine: [boarding station, alighting station?]; fb: the train's delay, for stops without live times.
   function routeBox(t, mine, fb, tags, green) {
     const box = el("div"); box.style.display = "grid"; box.style.gap = "10px";
+    let expanded = false;      // whole line, or only your part of it
     const draw = () => {
       const r = routeFor(t);
       const stops = r.stops;
@@ -1048,7 +1058,24 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
         return li;
       };
       let delayed = false;
+      // By default only your part of the line: from your station to where you get off (or the end of the line).
+      const lo = a >= 0 ? a : 0, hi = b >= 0 ? b : stops.length - 1;
+      const folds = !expanded && (lo > 0 || hi < stops.length - 1);
+      const moreRow = (text, sub, cls) => {
+        const li = el("li", "fold " + cls), btn = el("button");
+        btn.append(el("span", "", text));
+        if (sub) btn.append(el("small", "", sub));
+        btn.addEventListener("click", () => { expanded = !expanded; draw(); });
+        li.append(el("span"), btn);
+        return li;
+      };
+      const posName = pos.kind === "between" ? `between ${name(pos.i)} and ${name(pos.next)}` : pos.kind === "at" ? `at ${name(pos.i)}` : "";
+      if (folds && lo > 0) {
+        const trainBefore = (pos.kind === "between" && pos.next <= lo) || (pos.kind === "at" && pos.i < lo) || (pos.kind === "before" && pos.i < lo);
+        ul.append(moreRow(`${lo === 1 ? "1 earlier stop" : lo + " earlier stops"} · from ${name(0)}`, trainBefore ? (pos.kind === "before" ? `Train not departed yet from ${name(0)}` : `Train is ${posName}`) : "", "top"));
+      }
       stops.forEach((s, i) => {
+        if (folds && (i < lo || i > hi)) return;
         const first = i === 0, last = i === stops.length - 1;
         const past = pos.kind === "after" || i < pos.i || (pos.kind === "between" && i === pos.i);
         const here = pos.kind === "at" && pos.i === i;
@@ -1063,8 +1090,13 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
         li.append(el("span", here ? "tr" : first || last ? "pt term" : "pt"), st, times(s, first, last), sp);
         li.setAttribute("aria-label", `${s.name}${!first && s.arr ? ", arrives " + hhmm(s.arrX ?? s.arr) : ""}${!last && s.dep ? ", departs " + hhmm(s.depX ?? s.dep) : ""}${s.platform ? ", platform " + s.platform : ""}${here ? ", the train is here" : past ? ", passed" : ""}${i === a ? ", " + tags[0] : ""}${i === b ? ", " + tags[1] : ""}`);
         ul.append(li);
-        if (pos.kind === "between" && i === pos.i) { const pr = posRow(pos.next); if (a >= 0 && b >= 0 && i >= a && i < b) pr.classList.add("ju", "jl"); ul.append(pr); }
+        if (pos.kind === "between" && i === pos.i && !(folds && i === hi)) { const pr = posRow(pos.next); if (a >= 0 && b >= 0 && i >= a && i < b) pr.classList.add("ju", "jl"); ul.append(pr); }
       });
+      if (folds && hi < stops.length - 1) {
+        const k = stops.length - 1 - hi;
+        ul.append(moreRow(`${k === 1 ? "1 more stop" : k + " more stops"} · to ${name(stops.length - 1)}`, "", "bottom"));
+      }
+      if (expanded && (lo > 0 || hi < stops.length - 1)) ul.append(moreRow("Show only my part of the line", "", "bottom less"));
       box.append(ul);
       const notes = [];
       if (a >= 0 && b >= 0) notes.push(green ? `Green line: what's left of your trip, to ${name(b)}.` : `Dotted line: your journey, ${name(a)} to ${name(b)}.`);
