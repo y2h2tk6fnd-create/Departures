@@ -267,6 +267,9 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .stops li.past::before, .stops li.past::after, .stops li.pos::before { background: var(--muted); }
 .stops li.ju::before, .stops li.jl::after { left: 10px; width: 0; background: none; border-left: 4px dotted var(--fg); }
 .stops li.past.ju::before, .stops li.past.jl::after, .stops li.pos.ju::before { border-left-color: var(--muted); }
+/* Saved trips: the part of your trip still ahead is solid fluorescent green, shrinking as the train moves. */
+.stops.green li.ju::before, .stops.green li.jl::after { left: 10px; width: 4px; border: 0; background: var(--trip); box-shadow: 0 0 6px var(--trip); }
+.stops.green li.past.ju::before, .stops.green li.past.jl::after, .stops.green li.pos.ju::before, .stops.green li.here.ju::before { left: 11px; width: 2px; background: var(--muted); box-shadow: none; }
 .stops .pt { position: relative; z-index: 1; justify-self: center; width: 12px; height: 12px; border-radius: 50%; background: var(--surface); border: 2px solid var(--muted); }
 .stops li .pt.term, .stops li.mine .pt.term { width: 22px; height: 5px; border: 0; border-radius: 3px; background: var(--fg); }
 .stops li.mine .pt { width: 16px; height: 16px; border: 4px solid var(--fg); background: var(--surface); }
@@ -1008,7 +1011,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 
   // The line as a timeline: every stop, the train's position, and your stop(s) marked.
   // mine: [boarding station, alighting station?]; fb: the train's delay, for stops without live times.
-  function routeBox(t, mine, fb, tags) {
+  function routeBox(t, mine, fb, tags, green) {
     const box = el("div"); box.style.display = "grid"; box.style.gap = "10px";
     const draw = () => {
       const r = routeFor(t);
@@ -1020,7 +1023,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
       const a = idx(mine[0]), b = idx(mine[1]);
       const name = (i) => stops[i].name;
 
-      const ul = el("ol", "stops");
+      const ul = el("ol", "stops" + (green ? " green" : ""));
       // "arr 07:36 · dep 07:38" (live times), with one delay tag for the stop.
       const times = (s, first, last) => {
         const tm = el("span", "tm");
@@ -1064,7 +1067,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
       });
       box.append(ul);
       const notes = [];
-      if (a >= 0 && b >= 0) notes.push(`Dotted line: your journey, ${name(a)} to ${name(b)}.`);
+      if (a >= 0 && b >= 0) notes.push(green ? `Green line: what's left of your trip, to ${name(b)}.` : `Dotted line: your journey, ${name(a)} to ${name(b)}.`);
       if (delayed) notes.push("Times include delays; the red tag shows how late.");
       if (r.loading) notes.push("Loading the whole line…");
       else if (!r.full && r.why === "nokey") notes.push("Earlier stops and the train's position before it reaches this station need your Train Formation Service key (Settings).");
@@ -1157,7 +1160,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
         }
         const h = el("div", "legh" + (l.livery ? " liv-" + l.livery : "")); h.append(badge(l), el("span", "", "towards " + l.to)); s.append(h);
         if (!(l.stops && l.stops.length)) l.stops = [l.from, l.arrive].filter(Boolean);
-        s.append(routeBox(l, [l.from && l.from.name, l.arrive && l.arrive.name], (l.from && l.from.depDelay) || 0, ["Board", "Get off"]));
+        s.append(routeBox(l, [l.from && l.from.name, l.arrive && l.arrive.name], (l.from && l.from.depDelay) || 0, ["Board", "Get off"], isSaved(j.key)));
         prevArr = l.arrive;
       }
       inner.append(s);
@@ -1171,7 +1174,9 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     // Route of this train (departure boards).
     if (!j.trip && j.stops && j.stops.length > 1) {
       const s = el("section", "sect"); s.append(el("h3", "", `Line · where the train is`));
-      s.append(routeBox(j, [j.stops[0].name], j.delay || 0, ["Your station"]));
+      // A saved train from a plain departure board: your part of the line runs to the end of the line.
+      const saved = isSaved(j.key);
+      s.append(routeBox(j, saved ? [j.stops[0].name, j.stops[j.stops.length - 1].name] : [j.stops[0].name], j.delay || 0, ["Your station", "End of the line"], saved));
       inner.append(s);
     }
 
