@@ -1486,6 +1486,19 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
   let detailPhase = "";
   // The rides of a saved trip, each from where you board to where you get off.
   function legsOf(t) {
+    return withDelays(legsRaw(t));
+  }
+  // A train that leaves late is assumed to arrive late by as much, unless a later arrival is reported.
+  function withDelays(legs) {
+    for (const L of legs) {
+      if (L.arr == null) continue;
+      const known = L.arrX ?? L.arr;
+      const carried = L.depDelay > 0 ? L.arr + L.depDelay * 60 : L.arr;
+      if (carried > known) { L.arrX = carried; L.arrDelay = Math.round((carried - L.arr) / 60); }
+    }
+    return legs;
+  }
+  function legsRaw(t) {
     if (t.trip && t.legs) {
       const rides = t.legs.filter((l) => !l.walk && l.from && l.arrive).map((l) => ({ l, line: l.line, to: l.to,
         from: l.from.name, fromId: l.from.id, dep: l.from.dep, depX: l.from.depX, depDelay: l.from.depDelay || 0, depPlat: l.from.platform, depPlatChanged: l.from.platformChanged,
@@ -1543,18 +1556,21 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
   }
   // Progress along the whole trip, with a notch where you change trains.
   function progressEl(t) {
-    const legs = legsOf(t), first = legs[0], last = legs[legs.length - 1];
-    const start = first.depX ?? first.dep, end = last.arrX ?? last.arr;
+    const legs0 = legsOf(t), first = legs0[0], last = legs0[legs0.length - 1];
     const box = el("div", "progress"), bar = el("div", "bar"), fill = el("i");
     bar.append(fill);
-    if (start != null && end > start)
-      for (const L of legs.slice(1)) { const s = el("s"); s.style.left = (100 * ((L.dep - start) / (end - start))).toFixed(1) + "%"; bar.append(s); }
+    const notches = legs0.slice(1).map(() => { const n = el("s"); bar.append(n); return n; });
     const ends = el("div", "ends");
     ends.append(el("span", "", first.from || ""), el("span", "", last.place || ""));
     box.append(bar, ends);
     box.setAttribute("role", "progressbar"); box.setAttribute("aria-label", "Trip progress");
+    // Times are read afresh each second, so delays that come in later move the bar (and the change notches).
     const update = () => {
-      const f = start != null && end > start ? Math.min(1, Math.max(0, (now() - start) / (end - start))) : 0;
+      const legs = legsOf(t), a = legs[0], z = legs[legs.length - 1];
+      const start = a.depX ?? a.dep, end = z.arrX ?? z.arr;
+      const ok = start != null && end > start;
+      notches.forEach((n, i) => { const L = legs[i + 1]; n.style.left = ok && L ? (100 * (((L.depX ?? L.dep) - start) / (end - start))).toFixed(1) + "%" : "0"; });
+      const f = ok ? Math.min(1, Math.max(0, (now() - start) / (end - start))) : 0;
       fill.style.width = (100 * f).toFixed(2) + "%";
       box.setAttribute("aria-valuenow", String(Math.round(100 * f)));
     };
