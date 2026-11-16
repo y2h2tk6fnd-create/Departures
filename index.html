@@ -315,6 +315,26 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .legh .badge { font-size: 13px; padding: 4px 7px; }
 .change { background: var(--bg); border-radius: 10px; padding: 9px 12px; font-size: 14px; color: var(--muted); }
 .change b { color: var(--fg); }
+/* Change of trains: two big platform signs joined by the journey line. */
+.xfer { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 0 26px; margin: -10px 0; }
+/* The line runs on from the station where you change into the connector, and out of it again. */
+.stops.tochange li:last-child::after, .stops.fromchange li:first-child::before { display: block; left: 10px; width: 0; background: none; border-left: 4px dotted var(--fg); }
+.stops.green.tochange li:last-child::after, .stops.green.fromchange li:first-child::before { left: 10px; width: 4px; border: 0; background: var(--trip); box-shadow: 0 0 6px var(--trip); }
+.xrail { display: grid; grid-template-columns: 24px; grid-template-rows: 14px auto minmax(26px, 1fr) auto 14px; justify-items: center; }
+.xrail::before, .xrail::after, .xrail i { content: ""; width: 4px; background: repeating-linear-gradient(var(--fg) 0 5px, transparent 5px 9px); }
+.xrail i { margin: 4px 0; }
+.xfer.green .xrail::before, .xfer.green .xrail::after, .xfer.green .xrail i { background: var(--trip); box-shadow: 0 0 6px var(--trip); }
+.xnext { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px; margin-bottom: 2px; }
+.xnext .badge { font-size: 13px; padding: 4px 7px; }
+.xsign { min-width: 50px; height: 50px; margin: 0 -13px; padding: 0 6px; display: grid; place-items: center; border-radius: 9px; background: #2d327d; color: #ffffff; font: 700 28px/1 var(--font-body); font-variant-numeric: tabular-nums; }
+.xsign.changed { box-shadow: 0 0 0 3px #ffd400; }
+.xsign.unknown { background: none; color: var(--muted); border: 2px dashed var(--line); }
+.xtext { display: flex; flex-direction: column; justify-content: space-between; gap: 6px; min-width: 0; padding: 14px 0; }
+.xtext > span { display: grid; gap: 1px; justify-items: start; }
+.xtext b { font-size: 16px; }
+.xtext small { color: var(--muted); font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.xtext .xmins { display: inline-block; justify-self: start; align-self: flex-start; font-weight: 700; font-size: 13.5px; padding: 3px 8px; border-radius: 6px; background: var(--bg); }
+.xfer.green .xmins { background: var(--trip); color: var(--trip-ink); }
 .kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 16px; margin: 0; font-size: 14px; }
 .kv dt { color: var(--muted); }
 .kv dd { margin: 0; font-weight: 500; overflow-wrap: anywhere; }
@@ -1048,7 +1068,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 
   // The line as a timeline: every stop, the train's position, and your stop(s) marked.
   // mine: [boarding station, alighting station?]; fb: the train's delay, for stops without live times.
-  function routeBox(t, mine, fb, tags, green) {
+  function routeBox(t, mine, fb, tags, green, opts = {}) {
     const box = el("div"); box.style.display = "grid"; box.style.gap = "10px";
     let expanded = false;      // whole line, or only your part of it
     const draw = () => {
@@ -1061,7 +1081,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
       const a = idx(mine[0]), b = idx(mine[1]);
       const name = (i) => stops[i].name;
 
-      const ul = el("ol", "stops" + (green ? " green" : ""));
+      const ul = el("ol", "stops" + (green ? " green" : "") + (opts.fold === "top" ? " tochange" : opts.fold === "bottom" ? " fromchange" : ""));
       // "arr 07:36 · dep 07:38" (live times), with one delay tag for the stop.
       const times = (s, first, last) => {
         const tm = el("span", "tm");
@@ -1098,7 +1118,10 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
         return li;
       };
       const posName = pos.kind === "between" ? `between ${name(pos.i)} and ${name(pos.next)}` : pos.kind === "at" ? `at ${name(pos.i)}` : "";
-      if (folds && lo > 0) {
+      // On a trip with a change, fold rows stay off the side of the line that meets the change.
+      const showTop = folds && lo > 0 && (opts.fold !== "bottom" || hi >= stops.length - 1);
+      const showBottom = folds && hi < stops.length - 1 && (opts.fold !== "top" || lo === 0);
+      if (showTop) {
         const trainBefore = (pos.kind === "between" && pos.next <= lo) || (pos.kind === "at" && pos.i < lo) || (pos.kind === "before" && pos.i < lo);
         ul.append(moreRow(`${lo === 1 ? "1 earlier stop" : lo + " earlier stops"} · from ${name(0)}`, trainBefore ? (pos.kind === "before" ? `Train not departed yet from ${name(0)}` : `Train is ${posName}`) : "", "top"));
       }
@@ -1120,20 +1143,20 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
         ul.append(li);
         if (pos.kind === "between" && i === pos.i && !(folds && i === hi)) { const pr = posRow(pos.next); if (a >= 0 && b >= 0 && i >= a && i < b) pr.classList.add("ju", "jl"); ul.append(pr); }
       });
-      if (folds && hi < stops.length - 1) {
+      if (showBottom) {
         const k = stops.length - 1 - hi;
         ul.append(moreRow(`${k === 1 ? "1 more stop" : k + " more stops"} · to ${name(stops.length - 1)}`, "", "bottom"));
       }
       if (expanded && (lo > 0 || hi < stops.length - 1)) ul.append(moreRow("Show only my part of the line", "", "bottom less"));
       box.append(ul);
       const notes = [];
-      if (a >= 0 && b >= 0) notes.push(green ? `Green line: what's left of your trip, to ${name(b)}.` : `Dotted line: your journey, ${name(a)} to ${name(b)}.`);
+      if (a >= 0 && b >= 0 && opts.note !== false) notes.push(green ? `Green line: what's left of your trip, to ${name(b)}.` : opts.fold === "bottom" ? `Dotted line: your journey, to ${name(b)}.` : `Dotted line: your journey, ${name(a)} to ${name(b)}.`);
       if (delayed) notes.push("Times include delays; the red tag shows how late.");
       if (r.loading) notes.push("Loading the whole line…");
       else if (!r.full && r.why === "nokey") notes.push("Earlier stops and the train's position before it reaches this station need your Train Formation Service key (Settings).");
       else if (!r.full) notes.push("Earlier stops aren't published for this train, so the list starts here.");
       else if (!r.live) notes.push("Live times for the whole line aren't available; positions use the timetable plus the current delay.");
-      for (const x of notes) box.append(el("p", "stops-key", x));
+      if (opts.note !== false) for (const x of notes) box.append(el("p", "stops-key", x));
     };
     draw();
     routeCells.push(draw);
@@ -1202,9 +1225,28 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     inner.append(hero);
 
     // Trip: legs and changes.
+    // A change of trains: the arrival platform and the departure platform as large signs joined by the line,
+    // with the times and the time to change beside them.
+    function changeLink(arr, dep, mins, green, next) {
+      const box = el("div", "xfer" + (green ? " green" : ""));
+      const sign = (pl, changed) => { const x = el("span", "xsign" + (pl ? "" : " unknown") + (changed ? " changed" : ""), pl || "?"); x.title = pl ? "Platform " + pl : "Platform not announced yet"; return x; };
+      const rail = el("div", "xrail"); rail.append(sign(arr.platform, arr.platformChanged), el("i"), sign(dep.platform, dep.platformChanged));
+      const txt = el("div", "xtext");
+      const same = arr.name === dep.name;
+      const t1 = el("span"); t1.append(el("b", "", same ? `Change at ${arr.name}` : `Change: ${arr.name} → ${dep.name}`), el("small", "", `arrive ${hhmm(arr.arrX ?? arr.arr)}` + (arr.platform ? ` · platform ${arr.platform}` : "")));
+      const t2 = el("span", "xmins", mins != null ? `${mins} min to change` : "");
+      const t3 = el("span");
+      if (next) { const nl = el("span", "xnext" + (next.livery ? " liv-" + next.livery : "")); nl.append(badge(next), el("span", "", "towards " + next.to)); t3.append(nl); }
+      t3.append(el("small", "", `leave ${hhmm(dep.depX ?? dep.dep)}` + (dep.platform ? ` · platform ${dep.platform}` : "")));
+      txt.append(t1, t2, t3);
+      box.append(rail, txt);
+      box.setAttribute("aria-label", `${same ? "Change at " + arr.name : "Change from " + arr.name + " to " + dep.name}: arrive on platform ${arr.platform || "unknown"}, leave from platform ${dep.platform || "unknown"}${mins != null ? ", " + mins + " minutes to change" : ""}`);
+      return box;
+    }
     if (j.trip && j.legs) {
       const s = el("section", "sect"); s.append(el("h3", "", `Journey · ${j.dur}${j.dur ? " · " : ""}${j.changeText}`));
       let prevArr = null;
+      const rides = j.legs.filter((l) => !l.walk);
       for (const l of j.legs) {
         if (l.walk) {
           const mins = l.arrive && l.from && l.arrive.arr && l.from.dep ? Math.round((l.arrive.arr - l.from.dep) / 60) : null;
@@ -1213,14 +1255,14 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
         }
         if (prevArr && l.from) {
           const mins = l.from.dep && prevArr.arr ? Math.round((l.from.dep - (prevArr.arrX ?? prevArr.arr)) / 60) : null;
-          const c = el("div", "change"); c.append("Change at ", el("b", "", l.from.name));
-          if (l.from.platform) c.append(` to platform ${l.from.platform}`);
-          if (mins != null) c.append(` · ${mins} min to change`);
-          s.append(c);
+          s.append(changeLink(prevArr, l.from, mins, isSaved(j.key), l));
+        } else {
+          const h = el("div", "legh" + (l.livery ? " liv-" + l.livery : "")); h.append(badge(l), el("span", "", "towards " + l.to)); s.append(h);
         }
-        const h = el("div", "legh" + (l.livery ? " liv-" + l.livery : "")); h.append(badge(l), el("span", "", "towards " + l.to)); s.append(h);
+        const k = rides.indexOf(l);
         if (!(l.stops && l.stops.length)) l.stops = [l.from, l.arrive].filter(Boolean);
-        s.append(routeBox(l, [l.from && l.from.name, l.arrive && l.arrive.name], (l.from && l.from.depDelay) || 0, ["Board", "Get off"], isSaved(j.key)));
+        s.append(routeBox(l, [l.from && l.from.name, l.arrive && l.arrive.name], (l.from && l.from.depDelay) || 0, ["Board", "Get off"], isSaved(j.key),
+          { fold: rides.length < 2 ? "both" : k === 0 ? "top" : k === rides.length - 1 ? "bottom" : "both", note: k === rides.length - 1 }));
         prevArr = l.arrive;
       }
       inner.append(s);
