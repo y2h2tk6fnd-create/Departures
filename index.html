@@ -102,6 +102,13 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .suggest li[aria-selected="true"], .suggest li[role="option"]:hover { background: var(--bg); }
 
 .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+/* Date and time: a chip with the native picker laid over it (tap opens the iPhone's picker). */
+.whenrow { display: flex; gap: 6px; margin-bottom: -4px; }
+.whenchip { position: relative; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; padding: 6px 12px; font-size: 14px; font-weight: 600; }
+.whenchip::before { content: ""; width: 14px; height: 14px; border-radius: 50%; border: 2px solid currentColor; background: linear-gradient(currentColor, currentColor) 6px 2.5px / 2px 5px no-repeat, linear-gradient(currentColor, currentColor) 6px 6px / 4px 2px no-repeat; box-sizing: border-box; }
+.whenchip.set { border-color: var(--fg); color: var(--surface); background: var(--fg); }
+.whenchip input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 16px; }
+.whenclear { padding: 6px 12px; font-size: 15px; line-height: 1; }
 .chip {
   border: 1px solid var(--line); background: var(--surface); border-radius: 8px;
   padding: 5px 11px; font-size: 13px; font-weight: 500;
@@ -434,6 +441,13 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     <button class="swap" id="swap" aria-label="Swap departure and arrival">⇅</button>
   </section>
 
+  <div class="whenrow">
+    <label class="chip whenchip" id="when-chip">
+      <span id="when-text">Now</span>
+      <input type="datetime-local" id="when-in" aria-label="Departure date and time (up to a week ahead)">
+    </label>
+    <button class="chip whenclear" id="when-clear" aria-label="Back to now" hidden>×</button>
+  </div>
   <div class="chips" id="modes" role="group" aria-label="Transport types">
     <button class="chip" data-mode="train">Train</button>
     <button class="chip" data-mode="tram">Tram</button>
@@ -489,7 +503,9 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     freq: store.get("freq", null),       // { id: {id, name, icon, n, t} }
     modes: store.get("modes", ["train"]),
     limit: 30,
-    journeys: [],                        // the live list, from now on
+    when: null,                          // departure time searched for (seconds), or null for now
+    extra: new Map(),                    // later trains loaded with "Show more"
+    journeys: [],                        // the live list, from now on (or from state.when)
     past: new Map(),                     // key -> row, trains that already left (or were due to)
     pastAt: 0,
     loadedAt: null,
@@ -656,9 +672,9 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     if (!quiet) render();
     try {
       // Departed trains: fetched once per search (and every few minutes), from an hour ago.
-      const wantPast = Date.now() - state.pastAt > 5 * 60000;
+      const wantPast = !state.when && Date.now() - state.pastAt > 5 * 60000;
       const [live, past] = await Promise.all([
-        fetchRows(null, state.limit),
+        fetchRows(state.when, state.limit),
         wantPast ? fetchRows(now() - PAST_S, isTrip() ? 8 : 40).catch(() => null) : null
       ]);
       if (seq !== loadSeq) return;           // a newer search replaced this one
@@ -690,10 +706,24 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     }
   }
 
+  // The next batch after the last train shown (any distance ahead).
+  async function loadMore(btn, after) {
+    btn.textContent = "Loading…"; btn.disabled = true;
+    const seq = loadSeq;
+    try {
+      const { rows } = await fetchRows(after + 60, isTrip() ? 6 : 40);
+      if (seq !== loadSeq) return;
+      for (const r of rows) state.extra.set(r.key, r);
+      if (!rows.some((r) => r.planned > after)) toast("No later trains found.");
+    } catch { toast("Couldn't load more. Check your connection."); }
+    renderList();
+  }
+
   // Everything to show: departed trains first (oldest at the top), then upcoming in timetable order.
   function allRows() {
     const m = new Map();
     for (const r of state.past.values()) m.set(r.key, r);
+    for (const r of state.extra.values()) m.set(r.key, r);
     for (const r of state.journeys) m.set(r.key, r);
     const rows = [...m.values()].filter((r) => r.planned != null && when(r) >= now() - PAST_S);
     const gone = rows.filter(isGone).sort((a, b) => when(a) - when(b));
@@ -705,6 +735,8 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
   // ---------- Rendering helpers ----------
   const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
 
+  const fmtDayShort = new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "Europe/Zurich" });
+  const dayShort = (sec) => fmtDayShort.format(new Date(sec * 1000));
   function untilText(ts) {
     const m = Math.floor((ts - now()) / 60);
     if (m <= 0) return "now";
@@ -733,7 +765,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
       label = left <= 0 ? "departing now" : `departs in ${Math.floor(left / 60)} minutes ${Math.round(left % 60)} seconds`;
     } else {
       big = el("span", "big", hhmm(j.planned));
-      meta = el("span", "meta", "in " + untilText(t));
+      meta = el("span", "meta", left > 12 * 3600 && dayShort(t) !== dayShort(now()) ? dayShort(t) : "in " + untilText(t));
       label = `departs ${hhmm(j.planned)}`;
     }
     if (j.delay > 0) { meta.append(delayEl(j.delay)); label += `, ${j.delay} minutes late`; }
@@ -811,7 +843,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     }
     list.replaceChildren(); timeCells.length = 0;
     const trip = isTrip();
-    $("station-name").textContent = state.from ? state.from.name + (trip ? " → " + state.to.name : "") : "–";
+    $("station-name").textContent = state.from ? state.from.name + (trip ? " → " + state.to.name : "") + (state.when ? ` · ${dayShort(state.when)} from ${hhmm(state.when)}` : "") : "–";
     if (state.error) list.append(el("div", "error", state.error));
     const { gone, next } = allRows();
     if (!gone.length && !next.length) {
@@ -830,14 +862,10 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     }
     for (const j of next) list.append(card(j));
     if (!next.length && !state.error) list.append(el("div", "empty", "No more departures loaded."));
-    const canMore = trip ? state.limit < 16 : state.limit < 120;
-    if (canMore) {
+    const lastT = next.length ? next[next.length - 1].planned : null;
+    if (lastT != null && lastT < now() + 8 * 86400) {
       const more = el("button", "more", trip ? "Show later trains" : "Show more departures");
-      more.addEventListener("click", () => {
-        state.limit = trip ? Math.min(16, state.limit + 4) : Math.min(120, state.limit + 30);
-        more.textContent = "Loading…"; more.disabled = true;
-        loadBoard({ quiet: true });
-      });
+      more.addEventListener("click", () => loadMore(more, lastT));
       list.append(more);
     }
     if (pinNow) list.scrollTop = nowTop();
@@ -1165,7 +1193,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     hero.append(hl, h2, p, w, st);
     if (ph && ph.kind !== "wait") hero.append(heroProg[0]);
     const saved = isSaved(j.key);
-    if (saved || !isGone(j)) {
+    if (saved || tripEnd(j) > now()) {
       const ab = el("button", "addtrip" + (saved ? " on" : ""), saved ? "✓ TRACKING" : "START");
       ab.setAttribute("aria-label", saved ? "Tracking this trip in My trips. Tap to stop tracking." : "Start: keep track of this train in My trips");
       ab.addEventListener("click", () => { toggleTrip(j); renderDetail(); toast(isSaved(j.key) ? "Tracking — find it in My trips (☰ menu)." : "Stopped tracking."); });
@@ -1279,10 +1307,39 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     bump(s); newSearch();
   }
   function newSearch() {
-    state.journeys = []; state.past = new Map(); state.pastAt = 0; state.error = null;
+    state.journeys = []; state.past = new Map(); state.pastAt = 0; state.error = null; state.extra = new Map();
     state.limit = isTrip() ? 6 : 30; pinNow = true;
     save(); loadBoard();
   }
+  // ---------- Date and time ----------
+  const fmtParts = new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Zurich", hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  function zurichOffset(sec) {          // seconds Swiss time is ahead of UTC at that moment
+    const p = Object.fromEntries(fmtParts.formatToParts(new Date(sec * 1000)).map((x) => [x.type, x.value]));
+    return Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute, +p.second) / 1000 - sec;
+  }
+  const localInput = (sec) => { const d = new Date(sec * 1000); return fmtDate.format(d) + "T" + fmtTime.format(d); };
+  function syncWhen() {
+    $("when-text").textContent = state.when ? `${dayShort(state.when)} · ${hhmm(state.when)}` : "Now";
+    $("when-chip").classList.toggle("set", !!state.when);
+    $("when-clear").hidden = !state.when;
+    const inp = $("when-in");
+    inp.min = localInput(now()); inp.max = localInput(now() + 7 * 86400);
+    inp.value = localInput(state.when || now());
+  }
+  $("when-in").addEventListener("change", () => {
+    const v = $("when-in").value;                       // "2026-11-22T08:00", Swiss time
+    if (!v) return;
+    // Interpret it as Swiss time, whatever the phone's own time zone.
+    const guess = Date.parse(v + ":00Z") / 1000;
+    const offset = zurichOffset(guess);
+    let t = guess - offset;
+    if (t < now() + 120) t = null;                     // past or about now: just show now
+    else if (t > now() + 7 * 86400) { t = now() + 7 * 86400; toast("The timetable goes up to a week ahead."); }
+    state.when = t; syncWhen(); newSearch();
+  });
+  $("when-clear").addEventListener("click", () => { state.when = null; syncWhen(); newSearch(); });
+  syncWhen();
+
   $("modes").addEventListener("click", (e) => {
     const b = e.target.closest(".chip"); if (!b) return;
     const m = b.dataset.mode;
