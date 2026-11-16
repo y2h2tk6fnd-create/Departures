@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs><clipPath id="r"><rect width="512" height="512" rx="112"/></clipPath></defs>
+  <g clip-path="url(#r)">
+    <rect width="512" height="512" fill="#111111"/>
+    <rect width="512" height="60" fill="#d8232a"/>
+    <!-- train front -->
+    <path d="M92 430 V210 C92 140 142 106 222 106 C302 106 352 140 352 210 V430 Z" fill="#ffffff"/>
+    <rect x="124" y="156" width="196" height="112" rx="30" fill="#111111"/>
+    <rect x="92" y="298" width="260" height="28" fill="#d8232a"/>
+    <circle cx="146" cy="374" r="22" fill="#111111"/>
+    <circle cx="298" cy="374" r="22" fill="#111111"/>
+    <rect x="72" y="430" width="300" height="22" rx="11" fill="#ffffff"/>
+    <!-- platform sign, SBB style -->
+    <rect x="320" y="302" width="158" height="158" rx="30" fill="#2d327d" stroke="#111111" stroke-width="16"/>
+    <text x="399" y="420" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-weight="700" font-size="116" fill="#ffffff">1</text>
+  </g>
+</svg>
