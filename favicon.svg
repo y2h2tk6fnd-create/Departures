@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <rect width="512" height="512" rx="112" fill="#000000"/>
-  <!-- two interlocking chevrons: one leaving, one arriving -->
-  <polygon points="109.1,95.8 186.8,95.8 297.8,206.8 186.8,317.8 109.1,317.8 220.1,206.8" fill="#ffffff"/>
-  <polygon points="402.9,416.2 325.2,416.2 214.2,305.2 325.2,194.2 402.9,194.2 291.9,305.2" fill="#ffffff"/>
+  <!-- two interlocking chevrons, corners slightly rounded: white leaving, green arriving -->
+  <polygon points="104.7,91.7 180.3,91.7 288.3,199.7 180.3,307.7 104.7,307.7 212.7,199.7" fill="#ffffff" stroke="#ffffff" stroke-width="18" stroke-linejoin="round"/>
+  <polygon points="407.3,420.3 331.7,420.3 223.7,312.3 331.7,204.3 407.3,204.3 299.3,312.3" fill="#39ff6a" stroke="#39ff6a" stroke-width="18" stroke-linejoin="round"/>
 </svg>
