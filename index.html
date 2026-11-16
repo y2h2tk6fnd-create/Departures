@@ -552,7 +552,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
       cat, num,
       line: (cat + (num ? " " + num : "")).trim() || j.name || "?",
       longDistance: /^(IC|ICE|IR|EC|EN|RE|TGV|RJX?|NJ|PE|IRE|EXT)/.test(cat),
-      livery: /^L\d+$/i.test(num) || /^SL\d*$/i.test(cat) ? "lex"
+      livery: /^L\d+$/i.test(num) || /^(SL|RL)\d*$/i.test(cat) ? "lex"
             : cat === "RE" && num === "33" ? "re33"
             : /SNCF/i.test(j.operator || "") || /^(TER|TGV|OUIGO|INOUI|TER200)$/i.test(cat) ? "sncf" : "",
       operator: j.operator || "",
@@ -993,7 +993,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
       const at = full.findIndex((x) => x.name === own[k].name);
       if (at >= 0) return k === own.length - 1 ? full : full.slice(0, at + 1).concat(own.slice(k + 1));
     }
-    return full;
+    return own;          // the full route doesn't reach your stations at all: use this station's own list
   }
   // The live data only has a platform for some stops; the formation data has the planned one for each.
   function withPlatforms(stops, plan) {
