@@ -299,6 +299,11 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .stops li.pos .ptext { grid-column: 2 / 5; font-size: 14px; font-weight: 600; }
 .stops li.pos .ptext span { font-weight: 400; color: var(--muted); }
 .stops-key { font-size: 12px; color: var(--muted); margin: 0; }
+.sect-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.sect-head h3 { min-width: 0; }
+.allstops { flex: none; border: 1px solid var(--line); background: none; border-radius: 999px; padding: 4px 10px; font: 600 12px/1.2 var(--font-body); color: var(--muted); }
+.allstops[aria-pressed="true"] { border-color: var(--fg); background: var(--fg); color: var(--surface); }
+.stops li.pos.ahead::before { display: none; }
 /* Folded parts of the line: a dashed stretch with a count, tap to show the whole line. */
 .stops li.fold { min-height: 46px; padding: 4px 0; }
 .stops li.fold::before, .stops li.fold::after { left: 11px; width: 2px; background: repeating-linear-gradient(var(--muted) 0 4px, transparent 4px 9px); }
@@ -936,7 +941,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
   function openDetail(key, from) {
     const j = findRow(key);
     if (!j) return;
-    state.detail = key; detailSnap = j; lastFocus = from || null;
+    state.detail = key; detailSnap = j; lastFocus = from || null; allStops = false;
     if (!(history.state && history.state.detail)) history.pushState({ detail: 1 }, "", "#train");
     $("detail").hidden = false; document.body.classList.add("locked");
     renderDetail();
@@ -1047,11 +1052,25 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
   }
   const stopsText = (k) => k === 1 ? "1 stop" : k + " stops";
 
+  // "All stations": unfold the whole line of every train on the page, or show only your part of it.
+  let allStops = false;
+  function sectHead(title) {
+    const head = el("div", "sect-head");
+    const b = el("button", "allstops", "All stations");
+    b.setAttribute("aria-pressed", String(allStops));
+    b.addEventListener("click", () => {
+      allStops = !allStops;
+      document.querySelectorAll(".allstops").forEach((x) => x.setAttribute("aria-pressed", String(allStops)));
+      refreshRoutes();
+    });
+    head.append(el("h3", "", title), b);
+    return head;
+  }
+
   // The line as a timeline: every stop, the train's position, and your stop(s) marked.
   // mine: [boarding station, alighting station?]; fb: the train's delay, for stops without live times.
   function routeBox(t, mine, fb, tags, green) {
     const box = el("div"); box.style.display = "grid"; box.style.gap = "10px";
-    let expanded = false;      // whole line, or only your part of it
     const draw = () => {
       const r = routeFor(t);
       const stops = r.stops;
@@ -1089,19 +1108,18 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
       let delayed = false;
       // By default only your part of the line: from your station to where you get off (or the end of the line).
       const lo = a >= 0 ? a : 0, hi = b >= 0 ? b : stops.length - 1;
-      const folds = !expanded && (lo > 0 || hi < stops.length - 1);
-      const moreRow = (text, sub, cls) => {
-        const li = el("li", "fold " + cls), btn = el("button");
-        btn.append(el("span", "", text));
-        if (sub) btn.append(el("small", "", sub));
-        btn.addEventListener("click", () => { expanded = !expanded; draw(); });
-        li.append(el("span"), btn);
-        return li;
-      };
-      const posName = pos.kind === "between" ? `between ${name(pos.i)} and ${name(pos.next)}` : pos.kind === "at" ? `at ${name(pos.i)}` : "";
+      const folds = !allStops && (lo > 0 || hi < stops.length - 1);
+      // Folded and the train hasn't reached your part yet: say where it is, above your first stop.
       if (folds && lo > 0) {
-        const trainBefore = (pos.kind === "between" && pos.next <= lo) || (pos.kind === "at" && pos.i < lo) || (pos.kind === "before" && pos.i < lo);
-        ul.append(moreRow(`${lo === 1 ? "1 earlier stop" : lo + " earlier stops"} · from ${name(0)}`, trainBefore ? (pos.kind === "before" ? `Train not departed yet from ${name(0)}` : `Train is ${posName}`) : "", "top"));
+        const before = (pos.kind === "between" && pos.next <= lo) || (pos.kind === "at" && pos.i < lo) || (pos.kind === "before" && pos.i < lo);
+        if (before) {
+          const k = lo - (pos.kind === "between" ? pos.next : pos.i);
+          const where = pos.kind === "before" ? `not departed yet from ${name(pos.i)}` : pos.kind === "at" ? `at ${name(pos.i)}` : `between ${name(pos.i)} and ${name(pos.next)}`;
+          const li = el("li", "pos ahead"), tx = el("span", "ptext", "Train ");
+          tx.append(el("span", "", `· ${k === 0 ? "next stop " + name(lo) : stopsText(k) + " before " + name(lo)} · ${where}`));
+          li.append(el("span", "tr"), tx);
+          ul.append(li);
+        }
       }
       stops.forEach((s, i) => {
         if (folds && (i < lo || i > hi)) return;
@@ -1121,11 +1139,6 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
         ul.append(li);
         if (pos.kind === "between" && i === pos.i && !(folds && i === hi)) { const pr = posRow(pos.next); if (a >= 0 && b >= 0 && i >= a && i < b) pr.classList.add("ju", "jl"); ul.append(pr); }
       });
-      if (folds && hi < stops.length - 1) {
-        const k = stops.length - 1 - hi;
-        ul.append(moreRow(`${k === 1 ? "1 more stop" : k + " more stops"} · to ${name(stops.length - 1)}`, "", "bottom"));
-      }
-      if (expanded && (lo > 0 || hi < stops.length - 1)) ul.append(moreRow("Show only my part of the line", "", "bottom less"));
       box.append(ul);
       const notes = [];
       if (a >= 0 && b >= 0) notes.push(green ? `Green line: what's left of your trip, to ${name(b)}.` : `Dotted line: your journey, ${name(a)} to ${name(b)}.`);
@@ -1204,7 +1217,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 
     // Trip: legs and changes.
     if (j.trip && j.legs) {
-      const s = el("section", "sect"); s.append(el("h3", "", `Journey · ${j.dur}${j.dur ? " · " : ""}${j.changeText}`));
+      const s = el("section", "sect"); s.append(sectHead(`Journey · ${j.dur}${j.dur ? " · " : ""}${j.changeText}`));
       let prevArr = null;
       for (const l of j.legs) {
         if (l.walk) {
@@ -1234,7 +1247,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 
     // Route of this train (departure boards).
     if (!j.trip && j.stops && j.stops.length > 1) {
-      const s = el("section", "sect"); s.append(el("h3", "", `Line · where the train is`));
+      const s = el("section", "sect"); s.append(sectHead(`Line · where the train is`));
       // A saved train from a plain departure board: your part of the line runs to the end of the line.
       const saved = isSaved(j.key);
       s.append(routeBox(j, saved ? [j.stops[0].name, j.stops[j.stops.length - 1].name] : [j.stops[0].name], j.delay || 0, ["Your station", "End of the line"], saved));
