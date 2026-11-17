@@ -1193,7 +1193,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     // Hero: line, destination, the big time and the platform.
     const hero = el("div", "hero" + (j.livery ? " liv liv-" + j.livery : ""));
     const hl = el("div", "hline"); hl.append(badge(j));
-    if (j.operator) hl.append(el("span", "op", j.operator + (j.trainNo ? " · train " + j.trainNo : "")));
+    if (j.operator) hl.append(el("span", "op", j.operator));
     const h2 = el("h2"); h2.id = "d-title";
     h2.append("to " + j.to);
     const fromName = j.trip ? (j.legs && j.legs[0] && j.legs[0].from ? j.legs[0].from.name : state.from && state.from.name) : (j.fromName || (state.from && state.from.name));
