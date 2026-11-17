@@ -1653,12 +1653,23 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     }
     return legs;
   }
+  function liveStop(l, name) {
+    if (!l || !l.trainNo || !l.evu || !name) return null;
+    const r = liveRoutes.get(`${l.evu}|${l.date}|${l.trainNo}`);
+    return r && r.stops ? r.stops.find((s) => s.name === name) || null : null;
+  }
   function legsRaw(t) {
     if (t.trip && t.legs) {
       const rides = t.legs.filter((l) => !l.walk && l.from && l.arrive).map((l) => ({ l, line: l.line, to: l.to,
         from: l.from.name, fromId: l.from.id, dep: l.from.dep, depX: l.from.depX, depDelay: l.from.depDelay || 0, depPlat: l.from.platform, depPlatChanged: l.from.platformChanged,
         place: l.arrive.name, arr: l.arrive.arr, arrX: l.arrive.arrX, arrDelay: l.arrive.arrDelay || 0, arrPlat: l.arrive.platform, arrPlatChanged: l.arrive.platformChanged }));
-      if (rides[0]) Object.assign(rides[0], { depX: t.expected, depDelay: t.delay || 0, depPlat: t.platform, depPlatChanged: t.platformChanged });
+      if (rides[0] && rides[0].depX == null) Object.assign(rides[0], { depX: t.expected, depDelay: t.delay || 0, depPlat: t.platform || rides[0].depPlat, depPlatChanged: t.platformChanged });
+      for (const R of rides) {
+        // The stop list on the train's page (live data for the whole line) is the most up to date.
+        const d = liveStop(R.l, R.from), a = liveStop(R.l, R.place);
+        if (d && d.depX != null) { R.depX = d.depX; R.depDelay = d.depDelay || 0; }
+        if (a && a.arrX != null) { R.arrX = a.arrX; R.arrDelay = a.arrDelay || 0; }
+      }
       return rides;
     }
     const last = t.stops && t.stops.length > 1 ? t.stops[t.stops.length - 1] : null;
@@ -1811,9 +1822,14 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
           if (hit) live = fromBoard(hit);
         } catch {}
       }
-      if (t.trip && t.legs) { await refreshLegs(t); changed = true; }
+      if (t.trip && t.legs) {
+        await refreshLegs(t); changed = true;
+        const f = t.legs.find((x) => !x.walk);
+        if (f && f.from && f.from.depX != null) Object.assign(t, { expected: f.from.depX, delay: f.from.depDelay || 0, platform: f.from.platform || t.platform, platformChanged: f.from.platformChanged });
+      }
       if (!live) continue;
       for (const f of LIVE_FIELDS) t[f] = live[f];
+      if (t.trip && t.legs) { const f = t.legs.find((x) => !x.walk); if (f && f.from) Object.assign(f.from, { depX: live.expected, depDelay: live.delay, platform: live.platform || f.from.platform, platformChanged: live.platformChanged }); }
       if (!t.trip && live.stops) Object.assign(t, { stops: live.stops, arr: live.arr, arrX: live.arrX, arrDelay: live.arrDelay, dur: live.dur });
       changed = true;
     }
