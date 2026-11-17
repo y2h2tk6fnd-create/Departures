@@ -1179,10 +1179,13 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     const j = findRow(state.detail) || detailSnap; detailSnap = j;
     const body = $("d-body"); body.replaceChildren(); detailCells.length = 0; routeCells.length = 0;
     const rides = j.trip && j.legs ? j.legs.filter((l) => !l.walk) : [j];
+    // On a tracked trip with changes, the card shows the train you're on (or changing to), not the first one.
+    const ph0 = isSaved(j.key) && j.trip ? tripPhase(j) : null;
+    const cur = ph0 && ph0.kind !== "wait" && ph0.L && ph0.L.l ? ph0.L.l : (rides[0] || j);
     // Banner: a photo of the (first) train, if its model is known.
     let photo = null;
-    if (TT && TT.hasKey() && rides[0] && rides[0].trainNo && rides[0].evu) {
-      const r = TT.lookup(rides[0]);
+    if (TT && TT.hasKey() && cur && cur.trainNo && cur.evu) {
+      const r = TT.lookup(cur);
       if (r && r.state === "ok" && !r.info.unknown) photo = TT.PHOTOS[r.info.main] || null;
     }
     const banner = $("d-banner");
@@ -1194,11 +1197,11 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     const inner = el("div", "inner"); inner.style.padding = "0";
 
     // Hero: line, destination, the big time and the platform.
-    const hero = el("div", "hero" + (j.livery ? " liv liv-" + j.livery : ""));
-    const hl = el("div", "hline"); hl.append(badge(j));
-    if (j.operator) hl.append(el("span", "op", j.operator));
+    const hero = el("div", "hero" + (cur.livery ? " liv liv-" + cur.livery : ""));
+    const hl = el("div", "hline"); hl.append(badge(cur));
+    if (cur.operator) hl.append(el("span", "op", cur.operator));
     const h2 = el("h2"); h2.id = "d-title";
-    h2.append("to " + j.to);
+    h2.append("to " + (cur.to || j.to));
     const fromName = j.trip ? (j.legs && j.legs[0] && j.legs[0].from ? j.legs[0].from.name : state.from && state.from.name) : (j.fromName || (state.from && state.from.name));
     h2.append(el("small", "", j.trip ? `${fromName} → ${j.arrName}` : `from ${fromName || ""}`));
     const w = el("div", "when"); fillWhen(w, j); detailCells.push([w, j]);
@@ -1270,7 +1273,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 
     // Train type and photo (one per train on a trip with changes).
     const ts = el("section", "sect"); ts.append(el("h3", "", "The train"));
-    rides.forEach((t, i) => ts.append(trainInfo(t, rides.length > 1 ? `${t.line} towards ${t.to}` : "", i === 0 && !!photo)));
+    rides.forEach((t, i) => ts.append(trainInfo(t, rides.length > 1 ? `${t.line} towards ${t.to}` : "", t === cur && !!photo)));
     inner.append(ts);
 
     // Route of this train (departure boards).
