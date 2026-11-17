@@ -1034,6 +1034,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     const j = findRow(key);
     if (!j) return;
     state.detail = key; detailSnap = j; lastFocus = from || null; allStops = false; foldedCount = 0; openTrains.clear();
+    verifyLegs(j);
     if (!(history.state && history.state.detail)) history.pushState({ detail: 1 }, "", "#train");
     $("detail").hidden = false; document.body.classList.add("locked");
     renderDetail();
@@ -1070,7 +1071,9 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     if (!t.trainNo || !t.evu) return { ...fallback, why: "none" };
     const f = TT.lookup(t);
     if (!f || f.state === "loading") return { ...fallback, loading: true };
-    const plan = f.state === "ok" && f.info.route && f.info.route.length > 1 ? f.info.route : null;
+    let plan = f.state === "ok" && f.info.route && f.info.route.length > 1 ? f.info.route : null;
+    const boardDep = t.from ? t.from.dep : t.planned;
+    if (plan && boardDep && !plan.some((x) => x.dep === boardDep)) plan = null;   // a different run of the same number
     if (!plan) return { ...fallback, why: "none" };
     const k = `${t.evu}|${t.date}|${t.trainNo}`;
     if (t.stops) withPlatforms(t.stops, plan);
@@ -1814,16 +1817,39 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     if (changed) { save(); renderTrips(); if (state.detail && isSaved(state.detail) && !state.journeys.some((r) => r.key === state.detail)) renderDetail(); }
   }
   // Each ride of a multi-train trip: its departure, platform and arrival at your stop, from the board where you board it.
+  // The trip search sometimes gives the wrong train number (e.g. a morning run of the same line), so a leg's
+  // train is found on the board where you board it by its planned departure time and line.
+  const sameTrain = (x, l) => x.stop && x.stop.departureTimestamp === l.from.dep && x.category === l.cat && String(x.number || "") === String(l.num || x.number || "");
+  async function boardEntry(l) {
+    const at = new Date((l.from.dep - 120) * 1000);
+    const data = await getJSON("/stationboard", [["id", l.from.id], ["datetime", fmtDate.format(at) + " " + fmtTime.format(at)], ["limit", "15"]]);
+    return (data.stationboard || []).find((x) => sameTrain(x, l)) || null;
+  }
+  // Fix the train numbers of a trip's legs (once), then redraw if the page shows this trip.
+  async function verifyLegs(j) {
+    if (!j || !j.trip || !j.legs || j.legsChecked) return;
+    j.legsChecked = true;
+    let changed = false;
+    for (const l of j.legs.filter((x) => !x.walk && x.from && x.from.id && x.from.dep)) {
+      try {
+        const hit = await boardEntry(l);
+        const nr = hit && /^\d+$/.test(String(hit.name || "")) ? String(parseInt(hit.name, 10)) : null;
+        if (nr && nr !== l.trainNo) { l.trainNo = nr; changed = true; }
+      } catch {}
+    }
+    const first = j.legs.find((x) => !x.walk);
+    if (first && first.trainNo !== j.trainNo) { j.trainNo = first.trainNo; changed = true; }
+    if (changed) { if (isSaved(j.key)) save(); if (state.detail === j.key) renderDetail(); }
+  }
   async function refreshLegs(t) {
     const rides = t.legs.filter((l) => !l.walk && l.from && l.arrive);
     for (const l of rides) {
       const dep = l.from.depX ?? l.from.dep, arr = l.arrive.arrX ?? l.arrive.arr;
-      if (!l.from.id || !l.trainNo || arr < now() - 300 || dep > now() + 3 * 3600) continue;
+      if (!l.from.id || !l.from.dep || arr < now() - 300 || dep > now() + 3 * 3600) continue;
       try {
-        const at = new Date((l.from.dep - 120) * 1000);
-        const data = await getJSON("/stationboard", [["id", l.from.id], ["datetime", fmtDate.format(at) + " " + fmtTime.format(at)], ["limit", "12"]]);
-        const hit = (data.stationboard || []).find((x) => String(parseInt(x.name, 10)) === l.trainNo);
+        const hit = await boardEntry(l);
         if (!hit) continue;
+        if (/^\d+$/.test(String(hit.name || ""))) l.trainNo = String(parseInt(hit.name, 10));
         const b = fromBoard(hit);
         Object.assign(l.from, { depX: b.expected, depDelay: b.delay, platform: b.platform || l.from.platform, platformChanged: b.platformChanged });
         const s = (b.stops || []).find((x) => x.name === l.arrive.name);
