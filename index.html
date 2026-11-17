@@ -158,6 +158,8 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .big.gone { font: 700 22px/1.15 var(--font-display); color: var(--muted); letter-spacing: .01em; }
 .big.now { color: var(--fg); }
 .meta { color: var(--muted); font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.meta .dl { color: var(--fg); font-weight: 700; }
+.hero .meta .dl { color: var(--board-fg); }
 .delay { display: inline-block; background: var(--accent); color: #ffffff; font: 700 12px/1 var(--font-body); padding: 3px 5px; border-radius: 4px; margin-left: 6px; vertical-align: 1px; }
 
 /* Platform: like SBB signs, a white number on blue. */
@@ -765,25 +767,34 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
   const delayEl = (d) => el("span", "delay", "+" + d + "′");
 
   // The big time: countdown under 20 minutes, the departure time later on, "Departed" once it has left.
+  // The big time. Counts down to the planned departure (trains don't leave early, and a delay is only a
+  // forecast). Once the planned time has passed, a late train shows "Delayed" and counts down to its
+  // estimated departure; "Departed" only once that has passed too.
   function fillWhen(cell, j) {
-    const t = when(j), left = t - now();
+    const t = when(j), left = j.planned - now(), toExpected = t - now();
     cell.replaceChildren();
-    let big, meta, label;
+    let big, meta, label, chip = j.delay > 0;
     if (isGone(j)) {
       big = el("span", "big gone", "Departed");
       meta = el("span", "meta", hhmm(j.planned));
       label = `departed, ${hhmm(j.planned)}`;
+    } else if (left <= 0 && toExpected > 0 && j.delay > 0) {
+      big = el("span", "big countdown", countdown(t));
+      meta = el("span", "meta");
+      meta.append(el("b", "dl", "Delayed"), delayEl(j.delay));
+      chip = false;
+      label = `delayed ${j.delay} minutes, expected to leave in ${Math.floor(toExpected / 60)} minutes ${Math.round(toExpected % 60)} seconds`;
     } else if (left < COUNTDOWN_S) {
-      const c = countdown(t);
+      const c = countdown(j.planned);
       big = el("span", "big " + (c === "now" ? "now" : "countdown"), c);
       meta = el("span", "meta", "dep. " + hhmm(j.planned));
       label = left <= 0 ? "departing now" : `departs in ${Math.floor(left / 60)} minutes ${Math.round(left % 60)} seconds`;
     } else {
       big = el("span", "big", hhmm(j.planned));
-      meta = el("span", "meta", left > 12 * 3600 && dayShort(t) !== dayShort(now()) ? dayShort(t) : "in " + untilText(t));
+      meta = el("span", "meta", left > 12 * 3600 && dayShort(j.planned) !== dayShort(now()) ? dayShort(j.planned) : "in " + untilText(j.planned));
       label = `departs ${hhmm(j.planned)}`;
     }
-    if (j.delay > 0) { meta.append(delayEl(j.delay)); label += `, ${j.delay} minutes late`; }
+    if (chip) { meta.append(delayEl(j.delay)); label += `, ${j.delay} minutes late`; }
     cell.append(big, meta);
     cell.dataset.label = label;
   }
