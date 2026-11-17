@@ -687,7 +687,9 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
       // Departed trains: fetched once per search (and every few minutes), from an hour ago.
       const wantPast = !state.when && Date.now() - state.pastAt > 5 * 60000;
       const [live, past] = await Promise.all([
-        fetchRows(state.when, state.limit),
+        // From 20 minutes ago, so a delayed train keeps getting updates after its planned time has passed
+        // (the timetable lists departures by planned time) and only shows as departed once it has really left.
+        state.when ? fetchRows(state.when, state.limit) : fetchRows(now() - 20 * 60, state.limit + (isTrip() ? 4 : 15)),
         wantPast ? fetchRows(now() - PAST_S, isTrip() ? 8 : 40).catch(() => null) : null
       ]);
       if (seq !== loadSeq) return;           // a newer search replaced this one
