@@ -1197,7 +1197,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     const h2 = el("h2"); h2.id = "d-title";
     h2.append("to " + j.to);
     const fromName = j.trip ? (j.legs && j.legs[0] && j.legs[0].from ? j.legs[0].from.name : state.from && state.from.name) : (j.fromName || (state.from && state.from.name));
-    h2.append(el("small", "", j.trip ? `Your trip: ${fromName} → ${j.arrName}` : `from ${fromName || ""}`));
+    h2.append(el("small", "", j.trip ? `${fromName} → ${j.arrName}` : `from ${fromName || ""}`));
     const w = el("div", "when"); fillWhen(w, j); detailCells.push([w, j]);
     const st = el("div", "status");
     function status() {
