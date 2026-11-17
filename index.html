@@ -1604,6 +1604,8 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
       t.fromName = j.fromName || (j.trip && j.legs && j.legs[0] && j.legs[0].from ? j.legs[0].from.name : state.from && state.from.name);
       t.fromId = j.fromId || (state.from && state.from.id);
       t.savedAt = Date.now();
+      delete t.legsVerified; delete t.legsChecking;
+      setTimeout(() => verifyLegs(t), 0);              // make sure every train in the saved trip is the right one
       state.trips.push(t);
     }
     save(); renderTrips();
@@ -1636,6 +1638,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
   // Keep saved trains up to date: from the board when it shows them, else from their station's board.
   const LIVE_FIELDS = ["expected", "delay", "platform", "platformChanged"];
   async function refreshTrips() {
+    for (const t of state.trips) if (t.trip && !t.legsVerified) await verifyLegs(t);
     let changed = false;
     for (const t of state.trips) {
       if (tripEnd(t) < now() - 30 * 60 || t.planned > now() + 6 * 3600) continue;
@@ -1667,19 +1670,23 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
   }
   // Fix the train numbers of a trip's legs (once), then redraw if the page shows this trip.
   async function verifyLegs(j) {
-    if (!j || !j.trip || !j.legs || j.legsChecked) return;
-    j.legsChecked = true;
-    let changed = false;
-    for (const l of j.legs.filter((x) => !x.walk && x.from && x.from.id && x.from.dep)) {
+    if (!j || !j.trip || !j.legs || j.legsVerified || j.legsChecking) return;
+    j.legsChecking = true;
+    let changed = false, found = 0;
+    const rides = j.legs.filter((x) => !x.walk && x.from && x.from.id && x.from.dep);
+    for (const l of rides) {
       try {
         const hit = await boardEntry(l);
         const nr = hit && /^\d+$/.test(String(hit.name || "")) ? String(parseInt(hit.name, 10)) : null;
+        if (nr) found++;
         if (nr && nr !== l.trainNo) { l.trainNo = nr; changed = true; }
       } catch {}
     }
+    j.legsChecking = false;
+    if (found === rides.length) j.legsVerified = true;      // otherwise try again next time
     const first = j.legs.find((x) => !x.walk);
     if (first && first.trainNo !== j.trainNo) { j.trainNo = first.trainNo; changed = true; }
-    if (changed) { if (isSaved(j.key)) save(); if (state.detail === j.key) renderDetail(); }
+    if (changed || j.legsVerified) { if (state.trips.includes(j)) { save(); renderTrips(); } if (state.detail === j.key) renderDetail(); }
   }
   async function refreshLegs(t) {
     const rides = t.legs.filter((l) => !l.walk && l.from && l.arrive);
