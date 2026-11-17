@@ -1157,12 +1157,10 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
       });
       box.append(ul);
       const notes = [];
-      if (a >= 0 && b >= 0) notes.push(green ? `Green line: what's left of your trip, to ${name(b)}.` : `Dotted line: your journey, ${name(a)} to ${name(b)}.`);
-      if (delayed) notes.push("Times include delays; the red tag shows how late.");
       if (r.loading) notes.push("Loading the whole line…");
       else if (!r.full && r.why === "nokey") notes.push("Earlier stops and the train's position before it reaches this station need your Train Formation Service key (Settings).");
       else if (!r.full) notes.push("Earlier stops aren't published for this train, so the list starts here.");
-      else if (!r.live) notes.push("Live times for the whole line aren't available; positions use the timetable plus the current delay.");
+      // (no note when only the timetable is available; the times shown already include the current delay)
       for (const x of notes) box.append(el("p", "stops-key", x));
     };
     draw();
