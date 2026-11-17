@@ -24,7 +24,8 @@ On the board, each card shows:
 
 | What you see | Meaning |
 |---|---|
-| **12′05″** | Leaves in 12 minutes 5 seconds (trains leaving within 20 minutes) |
+| **12′05″** | 12 minutes 5 seconds to the planned departure (trains leaving within 20 minutes); a delay is shown as a tag but not added, since trains never leave early and a delay is only a forecast |
+| **Delayed** with a countdown | The planned time has passed and the train is late: counts down to its estimated departure |
 | **07:28** with "in 25′" | Departure time, for trains further off |
 | **Departed** | Already left (scroll up to see these) |
 | Red tag **+3′** | Running 3 minutes late |
