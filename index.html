@@ -1040,7 +1040,12 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     liveRoutes.set(k, { state: "done", at: Date.now(), stops });
     refreshRoutes();
   }
-  const refreshRoutes = () => routeCells.forEach((fn) => fn());
+  const refreshRoutes = () => { routeCells.forEach((fn) => fn()); syncAllStops(); };
+  // The "All stations" button only shows when some stops are actually folded away, with how many.
+  function syncAllStops() {
+    const n = [...document.querySelectorAll("#d-body [data-hidden]")].reduce((sum, x) => sum + (+x.dataset.hidden || 0), 0);
+    document.querySelectorAll(".allstops").forEach((b) => { b.hidden = !n; b.textContent = allStops ? "My stops" : `All stations · ${n}`; });
+  }
 
   // Arrival and departure at a stop, using the live time, else the planned time plus the train's delay.
   function stopTimes(s, fb) {
@@ -1076,6 +1081,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
   function sectHead(title, sub) {
     const head = el("div", "sect-head");
     const b = el("button", "allstops", "All stations");
+    b.hidden = true;                                   // shown by syncAllStops once there is something to unfold
     b.setAttribute("aria-pressed", String(allStops));
     b.addEventListener("click", () => {
       allStops = !allStops;
@@ -1131,6 +1137,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
       // By default only your part of the line: from your station to where you get off (or the end of the line).
       const lo = a >= 0 ? a : 0, hi = b >= 0 ? b : stops.length - 1;
       const folds = !allStops && (lo > 0 || hi < stops.length - 1);
+      box.dataset.hidden = String(lo + (stops.length - 1 - hi));     // stops this list folds away
       // Folded and the train hasn't reached your part yet: say where it is, above your first stop.
       if (folds && lo > 0) {
         const before = (pos.kind === "between" && pos.next <= lo) || (pos.kind === "at" && pos.i < lo) || (pos.kind === "before" && pos.i < lo);
@@ -1304,6 +1311,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     inner.append(k);
 
     body.append(inner);
+    syncAllStops();
   }
 
   function renderUpdated() {
