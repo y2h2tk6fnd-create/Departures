@@ -964,7 +964,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     const j = findRow(key);
     if (!j) return;
     state.detail = key; detailSnap = j; lastFocus = from || null; allStops = false;
-    verifyLegs(j);
+    verifyLegs(j); allStopsCount = 0;
     if (!(history.state && history.state.detail)) history.pushState({ detail: 1 }, "", "#train");
     $("detail").hidden = false; document.body.classList.add("locked");
     renderDetail();
@@ -1048,9 +1048,16 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
   }
   const refreshRoutes = () => { routeCells.forEach((fn) => fn()); syncAllStops(); };
   // The "All stations" button only shows when some stops are actually folded away, with how many.
+  // Once it has appeared on a train's page it stays (a refresh can briefly report no hidden stops while a
+  // stop list reloads), and it always stays while unfolded so you can fold back.
+  let allStopsCount = 0;
   function syncAllStops() {
     const n = [...document.querySelectorAll("#d-body [data-hidden]")].reduce((sum, x) => sum + (+x.dataset.hidden || 0), 0);
-    document.querySelectorAll(".allstops").forEach((b) => { b.hidden = !n; b.textContent = allStops ? "My stops" : `All stations · ${n}`; });
+    if (n) allStopsCount = n;
+    document.querySelectorAll(".allstops").forEach((b) => {
+      b.hidden = !(allStopsCount || allStops);
+      b.textContent = allStops ? "My stops" : `All stations · ${allStopsCount}`;
+    });
   }
 
   // Arrival and departure at a stop, using the live time, else the planned time plus the train's delay.
