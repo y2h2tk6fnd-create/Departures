@@ -4,8 +4,8 @@ On 19 November the app was rolled back to version `ca9e0a9` (16 November, aftern
 fold away with **"N earlier stops · from …" / "N more stops · to …"** rows around each train, and a
 change of trains is shown as a **"Change at Genève to platform 4 · 11 min to change"** box.
 
-The exact version from before the rollback is saved under the label **`before-rollback-2026-11-19`**
-(commit `521312f`). Any change below can be brought back on its own; its commit is given so it can be
+The exact version from before the rollback is commit **`521312f`** (still in the history: the rollback
+was added as a new version, nothing was deleted). Any change below can be brought back on its own; its commit is given so it can be
 re-applied as it was.
 
 Changes are grouped by what they do, oldest first within each group.
