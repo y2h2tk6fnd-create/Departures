@@ -158,8 +158,6 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .big.gone { font: 700 22px/1.15 var(--font-display); color: var(--muted); letter-spacing: .01em; }
 .big.now { color: var(--fg); }
 .meta { color: var(--muted); font-size: 13.5px; font-variant-numeric: tabular-nums; }
-.meta .dl { color: var(--fg); font-weight: 700; }
-.hero .meta .dl { color: var(--board-fg); }
 .delay { display: inline-block; background: var(--accent); color: #ffffff; font: 700 12px/1 var(--font-body); padding: 3px 5px; border-radius: 4px; margin-left: 6px; vertical-align: 1px; }
 
 /* Platform: like SBB signs, a white number on blue. */
@@ -293,12 +291,6 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .stops .tm .delay { margin: 0; color: #ffffff; font-size: 10.5px; padding: 2px 3px; }
 .stops li.past .tm .delay { opacity: .6; }
 .stops li.past .n, .stops li.past .tm b { color: var(--muted); }
-/* Stops outside your part of the line (shown with All stations): clearly secondary. */
-.stops li.out { min-height: 46px; padding: 5px 0; }
-.stops li.out .n { font-size: 14.5px; font-weight: 400; color: var(--muted); }
-.stops li.out .tm b { font-size: 13.5px; font-weight: 500; color: var(--muted); }
-.stops li.out .sp { opacity: .45; min-width: 26px; height: 24px; font-size: 13px; }
-.stops li.out .pt:not(.term) { width: 9px; height: 9px; }
 .stops .sp { justify-self: end; min-width: 32px; height: 30px; padding: 0 5px; display: grid; place-items: center; background: #2d327d; color: #fff; border-radius: 5px; font: 700 15px/1 var(--font-body); }
 .stops .sp.changed { box-shadow: 0 0 0 2px #ffd400; }
 .stops li.past .sp { opacity: .5; }
@@ -307,14 +299,6 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .stops li.pos .ptext { grid-column: 2 / 5; font-size: 14px; font-weight: 600; }
 .stops li.pos .ptext span { font-weight: 400; color: var(--muted); }
 .stops-key { font-size: 12px; color: var(--muted); margin: 0; }
-.sect-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding-bottom: 14px; margin-bottom: 8px; border-bottom: 1px solid var(--line); }
-.sh-text { min-width: 0; display: grid; gap: 3px; }
-.sect h3.sh-title { margin: 0; font: 700 24px/1.1 var(--font-display); letter-spacing: 0; text-transform: none; color: var(--fg); }
-.sh-sub { color: var(--muted); font-size: 15px; font-variant-numeric: tabular-nums; }
-.sh-sub b { color: var(--fg); font-weight: 600; }
-.allstops { flex: none; border: 1px solid var(--line); background: none; border-radius: 999px; padding: 4px 10px; font: 600 12px/1.2 var(--font-body); color: var(--muted); }
-.allstops[aria-pressed="true"] { border-color: var(--fg); background: var(--fg); color: var(--surface); }
-.stops li.pos.ahead::before { display: none; }
 /* Folded parts of the line: a dashed stretch with a count, tap to show the whole line. */
 .stops li.fold { min-height: 46px; padding: 4px 0; }
 .stops li.fold::before, .stops li.fold::after { left: 11px; width: 2px; background: repeating-linear-gradient(var(--muted) 0 4px, transparent 4px 9px); }
@@ -691,9 +675,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
       // Departed trains: fetched once per search (and every few minutes), from an hour ago.
       const wantPast = !state.when && Date.now() - state.pastAt > 5 * 60000;
       const [live, past] = await Promise.all([
-        // From 20 minutes ago, so a delayed train keeps getting updates after its planned time has passed
-        // (the timetable lists departures by planned time) and only shows as departed once it has really left.
-        state.when ? fetchRows(state.when, state.limit) : fetchRows(now() - 20 * 60, state.limit + (isTrip() ? 4 : 15)),
+        fetchRows(state.when, state.limit),
         wantPast ? fetchRows(now() - PAST_S, isTrip() ? 8 : 40).catch(() => null) : null
       ]);
       if (seq !== loadSeq) return;           // a newer search replaced this one
@@ -769,34 +751,25 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
   const delayEl = (d) => el("span", "delay", "+" + d + "′");
 
   // The big time: countdown under 20 minutes, the departure time later on, "Departed" once it has left.
-  // The big time. Counts down to the planned departure (trains don't leave early, and a delay is only a
-  // forecast). Once the planned time has passed, a late train shows "Delayed" and counts down to its
-  // estimated departure; "Departed" only once that has passed too.
   function fillWhen(cell, j) {
-    const t = when(j), left = j.planned - now(), toExpected = t - now();
+    const t = when(j), left = t - now();
     cell.replaceChildren();
-    let big, meta, label, chip = j.delay > 0;
+    let big, meta, label;
     if (isGone(j)) {
       big = el("span", "big gone", "Departed");
       meta = el("span", "meta", hhmm(j.planned));
       label = `departed, ${hhmm(j.planned)}`;
-    } else if (left <= 0 && toExpected > 0 && j.delay > 0) {
-      big = el("span", "big countdown", countdown(t));
-      meta = el("span", "meta");
-      meta.append(el("b", "dl", "Delayed"), delayEl(j.delay));
-      chip = false;
-      label = `delayed ${j.delay} minutes, expected to leave in ${Math.floor(toExpected / 60)} minutes ${Math.round(toExpected % 60)} seconds`;
     } else if (left < COUNTDOWN_S) {
-      const c = countdown(j.planned);
+      const c = countdown(t);
       big = el("span", "big " + (c === "now" ? "now" : "countdown"), c);
       meta = el("span", "meta", "dep. " + hhmm(j.planned));
       label = left <= 0 ? "departing now" : `departs in ${Math.floor(left / 60)} minutes ${Math.round(left % 60)} seconds`;
     } else {
       big = el("span", "big", hhmm(j.planned));
-      meta = el("span", "meta", left > 12 * 3600 && dayShort(j.planned) !== dayShort(now()) ? dayShort(j.planned) : "in " + untilText(j.planned));
+      meta = el("span", "meta", left > 12 * 3600 && dayShort(t) !== dayShort(now()) ? dayShort(t) : "in " + untilText(t));
       label = `departs ${hhmm(j.planned)}`;
     }
-    if (chip) { meta.append(delayEl(j.delay)); label += `, ${j.delay} minutes late`; }
+    if (j.delay > 0) { meta.append(delayEl(j.delay)); label += `, ${j.delay} minutes late`; }
     cell.append(big, meta);
     cell.dataset.label = label;
   }
@@ -963,8 +936,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
   function openDetail(key, from) {
     const j = findRow(key);
     if (!j) return;
-    state.detail = key; detailSnap = j; lastFocus = from || null; allStops = false;
-    verifyLegs(j); allStopsCount = 0;
+    state.detail = key; detailSnap = j; lastFocus = from || null;
     if (!(history.state && history.state.detail)) history.pushState({ detail: 1 }, "", "#train");
     $("detail").hidden = false; document.body.classList.add("locked");
     renderDetail();
@@ -1001,9 +973,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     if (!t.trainNo || !t.evu) return { ...fallback, why: "none" };
     const f = TT.lookup(t);
     if (!f || f.state === "loading") return { ...fallback, loading: true };
-    let plan = f.state === "ok" && f.info.route && f.info.route.length > 1 ? f.info.route : null;
-    const boardDep = t.from ? t.from.dep : t.planned;
-    if (plan && boardDep && !plan.some((x) => x.dep === boardDep)) plan = null;   // a different run of the same number
+    const plan = f.state === "ok" && f.info.route && f.info.route.length > 1 ? f.info.route : null;
     if (!plan) return { ...fallback, why: "none" };
     const k = `${t.evu}|${t.date}|${t.trainNo}`;
     if (t.stops) withPlatforms(t.stops, plan);
@@ -1046,19 +1016,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     liveRoutes.set(k, { state: "done", at: Date.now(), stops });
     refreshRoutes();
   }
-  const refreshRoutes = () => { routeCells.forEach((fn) => fn()); syncAllStops(); };
-  // The "All stations" button only shows when some stops are actually folded away, with how many.
-  // Once it has appeared on a train's page it stays (a refresh can briefly report no hidden stops while a
-  // stop list reloads), and it always stays while unfolded so you can fold back.
-  let allStopsCount = 0;
-  function syncAllStops() {
-    const n = [...document.querySelectorAll("#d-body [data-hidden]")].reduce((sum, x) => sum + (+x.dataset.hidden || 0), 0);
-    if (n) allStopsCount = n;
-    document.querySelectorAll(".allstops").forEach((b) => {
-      b.hidden = !(allStopsCount || allStops);
-      b.textContent = allStops ? "My stops" : `All stations · ${allStopsCount}`;
-    });
-  }
+  const refreshRoutes = () => routeCells.forEach((fn) => fn());
 
   // Arrival and departure at a stop, using the live time, else the planned time plus the train's delay.
   function stopTimes(s, fb) {
@@ -1089,29 +1047,11 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
   }
   const stopsText = (k) => k === 1 ? "1 stop" : k + " stops";
 
-  // "All stations": unfold the whole line of every train on the page, or show only your part of it.
-  let allStops = false;
-  function sectHead(title, sub) {
-    const head = el("div", "sect-head");
-    const b = el("button", "allstops", "All stations");
-    b.hidden = true;                                   // shown by syncAllStops once there is something to unfold
-    b.setAttribute("aria-pressed", String(allStops));
-    b.addEventListener("click", () => {
-      allStops = !allStops;
-      document.querySelectorAll(".allstops").forEach((x) => x.setAttribute("aria-pressed", String(allStops)));
-      refreshRoutes();
-    });
-    const t = el("div", "sh-text");
-    t.append(el("h3", "sh-title", title));
-    if (sub) t.append(sub);
-    head.append(t, b);
-    return head;
-  }
-
   // The line as a timeline: every stop, the train's position, and your stop(s) marked.
   // mine: [boarding station, alighting station?]; fb: the train's delay, for stops without live times.
   function routeBox(t, mine, fb, tags, green) {
     const box = el("div"); box.style.display = "grid"; box.style.gap = "10px";
+    let expanded = false;      // whole line, or only your part of it
     const draw = () => {
       const r = routeFor(t);
       const stops = r.stops;
@@ -1149,19 +1089,19 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
       let delayed = false;
       // By default only your part of the line: from your station to where you get off (or the end of the line).
       const lo = a >= 0 ? a : 0, hi = b >= 0 ? b : stops.length - 1;
-      const folds = !allStops && (lo > 0 || hi < stops.length - 1);
-      box.dataset.hidden = String(lo + (stops.length - 1 - hi));     // stops this list folds away
-      // Folded and the train hasn't reached your part yet: say where it is, above your first stop.
+      const folds = !expanded && (lo > 0 || hi < stops.length - 1);
+      const moreRow = (text, sub, cls) => {
+        const li = el("li", "fold " + cls), btn = el("button");
+        btn.append(el("span", "", text));
+        if (sub) btn.append(el("small", "", sub));
+        btn.addEventListener("click", () => { expanded = !expanded; draw(); });
+        li.append(el("span"), btn);
+        return li;
+      };
+      const posName = pos.kind === "between" ? `between ${name(pos.i)} and ${name(pos.next)}` : pos.kind === "at" ? `at ${name(pos.i)}` : "";
       if (folds && lo > 0) {
-        const before = (pos.kind === "between" && pos.next <= lo) || (pos.kind === "at" && pos.i < lo) || (pos.kind === "before" && pos.i < lo);
-        if (before) {
-          const k = lo - (pos.kind === "between" ? pos.next : pos.i);
-          const where = pos.kind === "before" ? `not departed yet from ${name(pos.i)}` : pos.kind === "at" ? `at ${name(pos.i)}` : `between ${name(pos.i)} and ${name(pos.next)}`;
-          const li = el("li", "pos ahead"), tx = el("span", "ptext", "Train ");
-          tx.append(el("span", "", `· ${k === 0 ? "next stop " + name(lo) : stopsText(k) + " before " + name(lo)} · ${where}`));
-          li.append(el("span", "tr"), tx);
-          ul.append(li);
-        }
+        const trainBefore = (pos.kind === "between" && pos.next <= lo) || (pos.kind === "at" && pos.i < lo) || (pos.kind === "before" && pos.i < lo);
+        ul.append(moreRow(`${lo === 1 ? "1 earlier stop" : lo + " earlier stops"} · from ${name(0)}`, trainBefore ? (pos.kind === "before" ? `Train not departed yet from ${name(0)}` : `Train is ${posName}`) : "", "top"));
       }
       stops.forEach((s, i) => {
         if (folds && (i < lo || i > hi)) return;
@@ -1170,9 +1110,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
         const here = pos.kind === "at" && pos.i === i;
         const trip = a >= 0 && b >= 0;
         const cls = [first || last ? "end" : "", past ? "past" : "", i === a || i === b ? "mine" : "",
-                     trip && i > a && i <= b ? "ju" : "", trip && i >= a && i < b ? "jl" : "",
-                     // unfolded stops outside your part of the line: before you board, after you get off
-                     (a >= 0 && i < a) || (b >= 0 && i > b) ? "out" : ""];
+                     trip && i > a && i <= b ? "ju" : "", trip && i >= a && i < b ? "jl" : ""];
         const li = el("li", cls.filter(Boolean).join(" "));
         const st = el("span", "st");
         st.append(el("span", "n", s.name));
@@ -1183,12 +1121,19 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
         ul.append(li);
         if (pos.kind === "between" && i === pos.i && !(folds && i === hi)) { const pr = posRow(pos.next); if (a >= 0 && b >= 0 && i >= a && i < b) pr.classList.add("ju", "jl"); ul.append(pr); }
       });
+      if (folds && hi < stops.length - 1) {
+        const k = stops.length - 1 - hi;
+        ul.append(moreRow(`${k === 1 ? "1 more stop" : k + " more stops"} · to ${name(stops.length - 1)}`, "", "bottom"));
+      }
+      if (expanded && (lo > 0 || hi < stops.length - 1)) ul.append(moreRow("Show only my part of the line", "", "bottom less"));
       box.append(ul);
       const notes = [];
+      if (a >= 0 && b >= 0) notes.push(green ? `Green line: what's left of your trip, to ${name(b)}.` : `Dotted line: your journey, ${name(a)} to ${name(b)}.`);
+      if (delayed) notes.push("Times include delays; the red tag shows how late.");
       if (r.loading) notes.push("Loading the whole line…");
       else if (!r.full && r.why === "nokey") notes.push("Earlier stops and the train's position before it reaches this station need your Train Formation Service key (Settings).");
       else if (!r.full) notes.push("Earlier stops aren't published for this train, so the list starts here.");
-      // (no note when only the timetable is available; the times shown already include the current delay)
+      else if (!r.live) notes.push("Live times for the whole line aren't available; positions use the timetable plus the current delay.");
       for (const x of notes) box.append(el("p", "stops-key", x));
     };
     draw();
@@ -1201,13 +1146,10 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     const j = findRow(state.detail) || detailSnap; detailSnap = j;
     const body = $("d-body"); body.replaceChildren(); detailCells.length = 0; routeCells.length = 0;
     const rides = j.trip && j.legs ? j.legs.filter((l) => !l.walk) : [j];
-    // On a tracked trip with changes, the card shows the train you're on (or changing to), not the first one.
-    const ph0 = isSaved(j.key) && j.trip ? tripPhase(j) : null;
-    const cur = ph0 && ph0.kind !== "wait" && ph0.L && ph0.L.l ? ph0.L.l : (rides[0] || j);
     // Banner: a photo of the (first) train, if its model is known.
     let photo = null;
-    if (TT && TT.hasKey() && cur && cur.trainNo && cur.evu) {
-      const r = TT.lookup(cur);
+    if (TT && TT.hasKey() && rides[0] && rides[0].trainNo && rides[0].evu) {
+      const r = TT.lookup(rides[0]);
       if (r && r.state === "ok" && !r.info.unknown) photo = TT.PHOTOS[r.info.main] || null;
     }
     const banner = $("d-banner");
@@ -1219,13 +1161,13 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     const inner = el("div", "inner"); inner.style.padding = "0";
 
     // Hero: line, destination, the big time and the platform.
-    const hero = el("div", "hero" + (cur.livery ? " liv liv-" + cur.livery : ""));
-    const hl = el("div", "hline"); hl.append(badge(cur));
-    if (cur.operator) hl.append(el("span", "op", cur.operator));
+    const hero = el("div", "hero" + (j.livery ? " liv liv-" + j.livery : ""));
+    const hl = el("div", "hline"); hl.append(badge(j));
+    if (j.operator) hl.append(el("span", "op", j.operator + (j.trainNo ? " · train " + j.trainNo : "")));
     const h2 = el("h2"); h2.id = "d-title";
-    h2.append("to " + (cur.to || j.to));
+    h2.append("to " + j.to);
     const fromName = j.trip ? (j.legs && j.legs[0] && j.legs[0].from ? j.legs[0].from.name : state.from && state.from.name) : (j.fromName || (state.from && state.from.name));
-    h2.append(el("small", "", j.trip ? `${fromName} → ${j.arrName}` : `from ${fromName || ""}`));
+    h2.append(el("small", "", j.trip ? `Your trip: ${fromName} → ${j.arrName}` : `from ${fromName || ""}`));
     const w = el("div", "when"); fillWhen(w, j); detailCells.push([w, j]);
     const st = el("div", "status");
     function status() {
@@ -1262,15 +1204,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 
     // Trip: legs and changes.
     if (j.trip && j.legs) {
-      const s = el("section", "sect"); {
-        // "52 min" big, then "06:56 → 07:45 · 1 change at Genève" (times include delays).
-        const sub = el("div", "sh-sub");
-        const dep = when(j), arr = j.arrX ?? j.arr;
-        sub.append(el("b", "", hhmm(dep)), " → ", el("b", "", arr != null ? hhmm(arr) : "–"));
-        if (j.arrDelay > 0) sub.append(delayEl(j.arrDelay));
-        sub.append(" · " + j.changeText);
-        s.append(sectHead(j.dur || "Journey", sub));
-      }
+      const s = el("section", "sect"); s.append(el("h3", "", `Journey · ${j.dur}${j.dur ? " · " : ""}${j.changeText}`));
       let prevArr = null;
       for (const l of j.legs) {
         if (l.walk) {
@@ -1295,17 +1229,12 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 
     // Train type and photo (one per train on a trip with changes).
     const ts = el("section", "sect"); ts.append(el("h3", "", "The train"));
-    rides.forEach((t, i) => ts.append(trainInfo(t, rides.length > 1 ? `${t.line} towards ${t.to}` : "", t === cur && !!photo)));
+    rides.forEach((t, i) => ts.append(trainInfo(t, rides.length > 1 ? `${t.line} towards ${t.to}` : "", i === 0 && !!photo)));
     inner.append(ts);
 
     // Route of this train (departure boards).
     if (!j.trip && j.stops && j.stops.length > 1) {
-      const s = el("section", "sect"); {
-        const sub = el("div", "sh-sub");
-        sub.append(el("b", "", j.stops[0].name), " → ", el("b", "", j.stops[j.stops.length - 1].name));
-        if (j.dur) sub.append(" · " + j.dur);
-        s.append(sectHead("Stops", sub));
-      }
+      const s = el("section", "sect"); s.append(el("h3", "", `Line · where the train is`));
       // A saved train from a plain departure board: your part of the line runs to the end of the line.
       const saved = isSaved(j.key);
       s.append(routeBox(j, saved ? [j.stops[0].name, j.stops[j.stops.length - 1].name] : [j.stops[0].name], j.delay || 0, ["Your station", "End of the line"], saved));
@@ -1326,7 +1255,6 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     inner.append(k);
 
     body.append(inner);
-    syncAllStops();
   }
 
   function renderUpdated() {
@@ -1521,23 +1449,12 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     }
     return legs;
   }
-  function liveStop(l, name) {
-    if (!l || !l.trainNo || !l.evu || !name) return null;
-    const r = liveRoutes.get(`${l.evu}|${l.date}|${l.trainNo}`);
-    return r && r.stops ? r.stops.find((s) => s.name === name) || null : null;
-  }
   function legsRaw(t) {
     if (t.trip && t.legs) {
       const rides = t.legs.filter((l) => !l.walk && l.from && l.arrive).map((l) => ({ l, line: l.line, to: l.to,
         from: l.from.name, fromId: l.from.id, dep: l.from.dep, depX: l.from.depX, depDelay: l.from.depDelay || 0, depPlat: l.from.platform, depPlatChanged: l.from.platformChanged,
         place: l.arrive.name, arr: l.arrive.arr, arrX: l.arrive.arrX, arrDelay: l.arrive.arrDelay || 0, arrPlat: l.arrive.platform, arrPlatChanged: l.arrive.platformChanged }));
-      if (rides[0] && rides[0].depX == null) Object.assign(rides[0], { depX: t.expected, depDelay: t.delay || 0, depPlat: t.platform || rides[0].depPlat, depPlatChanged: t.platformChanged });
-      for (const R of rides) {
-        // The stop list on the train's page (live data for the whole line) is the most up to date.
-        const d = liveStop(R.l, R.from), a = liveStop(R.l, R.place);
-        if (d && d.depX != null) { R.depX = d.depX; R.depDelay = d.depDelay || 0; }
-        if (a && a.arrX != null) { R.arrX = a.arrX; R.arrDelay = a.arrDelay || 0; }
-      }
+      if (rides[0]) Object.assign(rides[0], { depX: t.expected, depDelay: t.delay || 0, depPlat: t.platform, depPlatChanged: t.platformChanged });
       return rides;
     }
     const last = t.stops && t.stops.length > 1 ? t.stops[t.stops.length - 1] : null;
@@ -1638,8 +1555,6 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
       t.fromName = j.fromName || (j.trip && j.legs && j.legs[0] && j.legs[0].from ? j.legs[0].from.name : state.from && state.from.name);
       t.fromId = j.fromId || (state.from && state.from.id);
       t.savedAt = Date.now();
-      delete t.legsVerified; delete t.legsChecking;
-      setTimeout(() => verifyLegs(t), 0);              // make sure every train in the saved trip is the right one
       state.trips.push(t);
     }
     save(); renderTrips();
@@ -1672,7 +1587,6 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
   // Keep saved trains up to date: from the board when it shows them, else from their station's board.
   const LIVE_FIELDS = ["expected", "delay", "platform", "platformChanged"];
   async function refreshTrips() {
-    for (const t of state.trips) if (t.trip && !t.legsVerified) await verifyLegs(t);
     let changed = false;
     for (const t of state.trips) {
       if (tripEnd(t) < now() - 30 * 60 || t.planned > now() + 6 * 3600) continue;
@@ -1685,57 +1599,25 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
           if (hit) live = fromBoard(hit);
         } catch {}
       }
-      if (t.trip && t.legs) {
-        await refreshLegs(t); changed = true;
-        const f = t.legs.find((x) => !x.walk);
-        if (f && f.from && f.from.depX != null) Object.assign(t, { expected: f.from.depX, delay: f.from.depDelay || 0, platform: f.from.platform || t.platform, platformChanged: f.from.platformChanged });
-      }
+      if (t.trip && t.legs) { await refreshLegs(t); changed = true; }
       if (!live) continue;
       for (const f of LIVE_FIELDS) t[f] = live[f];
-      if (t.trip && t.legs) { const f = t.legs.find((x) => !x.walk); if (f && f.from) Object.assign(f.from, { depX: live.expected, depDelay: live.delay, platform: live.platform || f.from.platform, platformChanged: live.platformChanged }); }
       if (!t.trip && live.stops) Object.assign(t, { stops: live.stops, arr: live.arr, arrX: live.arrX, arrDelay: live.arrDelay, dur: live.dur });
       changed = true;
     }
     if (changed) { save(); renderTrips(); if (state.detail && isSaved(state.detail) && !state.journeys.some((r) => r.key === state.detail)) renderDetail(); }
   }
   // Each ride of a multi-train trip: its departure, platform and arrival at your stop, from the board where you board it.
-  // The trip search sometimes gives the wrong train number (e.g. a morning run of the same line), so a leg's
-  // train is found on the board where you board it by its planned departure time and line.
-  const sameTrain = (x, l) => x.stop && x.stop.departureTimestamp === l.from.dep && x.category === l.cat && String(x.number || "") === String(l.num || x.number || "");
-  async function boardEntry(l) {
-    const at = new Date((l.from.dep - 120) * 1000);
-    const data = await getJSON("/stationboard", [["id", l.from.id], ["datetime", fmtDate.format(at) + " " + fmtTime.format(at)], ["limit", "15"]]);
-    return (data.stationboard || []).find((x) => sameTrain(x, l)) || null;
-  }
-  // Fix the train numbers of a trip's legs (once), then redraw if the page shows this trip.
-  async function verifyLegs(j) {
-    if (!j || !j.trip || !j.legs || j.legsVerified || j.legsChecking) return;
-    j.legsChecking = true;
-    let changed = false, found = 0;
-    const rides = j.legs.filter((x) => !x.walk && x.from && x.from.id && x.from.dep);
-    for (const l of rides) {
-      try {
-        const hit = await boardEntry(l);
-        const nr = hit && /^\d+$/.test(String(hit.name || "")) ? String(parseInt(hit.name, 10)) : null;
-        if (nr) found++;
-        if (nr && nr !== l.trainNo) { l.trainNo = nr; changed = true; }
-      } catch {}
-    }
-    j.legsChecking = false;
-    if (found === rides.length) j.legsVerified = true;      // otherwise try again next time
-    const first = j.legs.find((x) => !x.walk);
-    if (first && first.trainNo !== j.trainNo) { j.trainNo = first.trainNo; changed = true; }
-    if (changed || j.legsVerified) { if (state.trips.includes(j)) { save(); renderTrips(); } if (state.detail === j.key) renderDetail(); }
-  }
   async function refreshLegs(t) {
     const rides = t.legs.filter((l) => !l.walk && l.from && l.arrive);
     for (const l of rides) {
       const dep = l.from.depX ?? l.from.dep, arr = l.arrive.arrX ?? l.arrive.arr;
-      if (!l.from.id || !l.from.dep || arr < now() - 300 || dep > now() + 3 * 3600) continue;
+      if (!l.from.id || !l.trainNo || arr < now() - 300 || dep > now() + 3 * 3600) continue;
       try {
-        const hit = await boardEntry(l);
+        const at = new Date((l.from.dep - 120) * 1000);
+        const data = await getJSON("/stationboard", [["id", l.from.id], ["datetime", fmtDate.format(at) + " " + fmtTime.format(at)], ["limit", "12"]]);
+        const hit = (data.stationboard || []).find((x) => String(parseInt(x.name, 10)) === l.trainNo);
         if (!hit) continue;
-        if (/^\d+$/.test(String(hit.name || ""))) l.trainNo = String(parseInt(hit.name, 10));
         const b = fromBoard(hit);
         Object.assign(l.from, { depX: b.expected, depDelay: b.delay, platform: b.platform || l.from.platform, platformChanged: b.platformChanged });
         const s = (b.stops || []).find((x) => x.name === l.arrive.name);
