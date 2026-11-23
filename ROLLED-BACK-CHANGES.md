@@ -43,7 +43,7 @@ Changes are grouped by what they do, oldest first within each group.
 | Commit | Change |
 |---|---|
 | `a876b92` | **Bug fix.** The trip search sometimes gives the wrong train number (e.g. the morning run of the same line), which made the stops, times and position of a leg wrong (hours off). Each leg's train was looked up on the board of its boarding station by planned time and line, and a full route was only used if it passed your boarding station at your departure time. Live updates for each leg used the same matching. |
-| `2649e97` | On a tracked trip with a change, the countdown card showed the train you're on or changing to (badge, destination, colour stripe, photo) instead of always the first train. |
+| `2649e97` | ~~On a tracked trip with a change, the countdown card showed the train you're on or changing to (badge, destination, colour stripe, photo) instead of always the first train.~~ **Re-applied on 23 Nov.** |
 | `404b9ef` | **Bug fix.** Saved trips were checked against the boarding stations' boards right after saving and at startup, not only when their page was opened (so a trip saved by tapping START immediately, or never reopened, was still corrected). |
 | `d7ae428` | **Bug fix.** The trip stages used the freshest times (the live stop list, then each leg's updated times) and kept the trip-level and leg-level times in step, so a late train counted as still travelling until its delayed arrival. Before, the change countdown could start while the first train was still a minute out. |
 
