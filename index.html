@@ -285,7 +285,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
   55%  { opacity: .75; }
   100% { opacity: 0; background-position: 190% 50%, 0 0; }
 }
-.sect { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 10px; min-width: 0; }
+.sect { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 10px; min-width: 0; position: relative; z-index: 1; }   /* sits above the countdown card, covering its shadow */
 .sect h3 { margin: 0; font: 600 11px/1 var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 .sect .note { color: var(--muted); font-size: 14px; margin: 0; }
 .tinfo { display: grid; gap: 6px; }
