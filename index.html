@@ -382,6 +382,21 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 16px; margin: 0; font-size: 14px; }
 .kv dt { color: var(--muted); }
 .kv dd { margin: 0; font-weight: 500; overflow-wrap: anywhere; }
+/* Expanded train: photo, model, stats, then the trip as tidy rows, credit last. */
+.trains .tdet-body { gap: 16px; }
+.trains .tinfo { gap: 4px; }
+.trains .tinfo img { margin-bottom: 8px; }
+.trains .facts { margin-top: 10px; }
+.trip-kv { grid-template-columns: 84px minmax(0, 1fr); align-items: center; row-gap: 10px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 15px; }
+.trip-kv dt { font-size: 13px; }
+.trip-kv dd { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.trip-kv .kt { font-weight: 700; font-variant-numeric: tabular-nums; }
+.trip-kv .delay { margin: 0; }
+.trip-kv .kn { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trip-kv .sp { margin-left: auto; flex: none; min-width: 28px; height: 26px; padding: 0 5px; display: grid; place-items: center; background: #2d327d; color: #fff; border-radius: 5px; font: 700 14px/1 var(--font-body); }
+.trip-kv .sp.changed { box-shadow: 0 0 0 2px #ffd400; }
+.trains .credit { font-size: 11px; color: var(--muted); }
+.trains .credit a { color: inherit; }
 
 .head-actions { display: flex; align-items: baseline; gap: 12px; }
 /* Menu button (☰) and the menu: my trips, then settings. */
@@ -1384,16 +1399,26 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
       const inside = el("div", "tdet-body");
       inside.append(trainInfo(t, "", false));          // every train shows its own photo, the current one too
       // Details of this train on your journey
-      const dl = el("dl", "kv");
-      const add = (a, v) => { if (v) dl.append(el("dt", "", a), el("dd", "", v)); };
+      const dl = el("dl", "kv trip-kv");
+      const add = (a, v) => { if (!v) return; const dd = el("dd"); dd.append(v); dl.append(el("dt", "", a), dd); };
+      // "22:00  Lausanne  [8]": time, station, a small platform sign; the delay tag next to the time.
+      const stopLine = (time, delay, name, plat, changed) => {
+        const f = document.createDocumentFragment();
+        f.append(el("b", "kt", hhmm(time)));
+        if (delay > 0) f.append(delayEl(delay));
+        f.append(el("span", "kn", name));
+        if (plat) { const sp = el("span", "sp" + (changed ? " changed" : ""), plat); sp.title = "Platform " + plat; f.append(sp); }
+        return f;
+      };
       const from = isLeg ? t.from : { name: j.fromName || (state.from && state.from.name), dep: j.planned, depX: j.expected, depDelay: j.delay, platform: j.platform, platformChanged: j.platformChanged };
       const last = isLeg ? t.arrive : (j.stops && j.stops.length > 1 ? j.stops[j.stops.length - 1] : null);
       add("Date", fmtDay.format(new Date((from.dep ?? j.planned) * 1000)));
-      if (from.dep != null) add("Departure", `${hhmm(from.dep)} from ${from.name}` + (from.depDelay > 0 ? `, expected ${hhmm(from.depX ?? from.dep + from.depDelay * 60)}` : "") + (from.platform ? ` · platform ${from.platform}` + (from.platformChanged ? " (changed)" : "") : ""));
-      if (last && last.arr != null) add("Arrival", `${hhmm(last.arr)} at ${last.name}` + (last.arrDelay > 0 && last.arrX ? `, expected ${hhmm(last.arrX)}` : "") + (last.platform ? ` · platform ${last.platform}` : ""));
-      add("Operator", t.operator);
-      add("Train number", t.trainNo);
+      if (from.dep != null) add("Departure", stopLine(from.dep, from.depDelay, from.name, from.platform, from.platformChanged));
+      if (last && last.arr != null) add("Arrival", stopLine(last.arr, last.arrDelay, last.name, last.platform, last.platformChanged));
+      add("Train", [t.operator, t.trainNo ? "no. " + t.trainNo : ""].filter(Boolean).join(" · "));
       inside.append(dl);
+      const credit = inside.querySelector(".credit");
+      if (credit) inside.append(credit);                // the photo credit goes last
       det.append(inside);
       ts.append(det);
     });
