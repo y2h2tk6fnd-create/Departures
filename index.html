@@ -304,7 +304,11 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .stops .n { font-size: 17px; font-weight: 500; line-height: 1.25; overflow-wrap: break-word; hyphens: manual; }
 .stops li.mine .n, .stops li.end .n { font-weight: 700; }
 .stops .tm { display: grid; gap: 3px; justify-items: end; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.stops .tm span { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12.5px; }
+/* Delay tag, label and time in fixed columns, so the tags line up down the list. */
+.stops .tm > span { display: grid; grid-template-columns: 34px 24px auto; align-items: center; gap: 6px; color: var(--muted); font-size: 12.5px; }
+.stops .tm .delay { grid-column: 1; justify-self: end; }
+.stops .tm .lbl { grid-column: 2; font-style: normal; text-align: right; }
+.stops .tm b { grid-column: 3; }
 .stops .tm b { color: var(--fg); font: 600 16px/1.15 var(--font-body); font-variant-numeric: tabular-nums; min-width: 44px; text-align: right; }
 .stops .tm .delay { margin: 0; color: #ffffff; font-size: 10.5px; padding: 2px 3px; }
 .stops li.past .tm .delay { opacity: .6; }
@@ -1141,7 +1145,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
           if (planned == null) return;
           const x = el("span");
           if (delay > 0) { const c = delayEl(delay); c.title = `${delay} min late`; x.append(c); delayed = true; }
-          x.append(label, el("b", "", hhmm(delay > 0 && expected != null ? expected : planned)));
+          x.append(el("i", "lbl", label), el("b", "", hhmm(delay > 0 && expected != null ? expected : planned)));
           tm.append(x);
         };
         if (!first) part("arr", s.arr, s.arrX, s.arrDelay);
