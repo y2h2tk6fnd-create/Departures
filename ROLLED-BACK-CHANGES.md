@@ -25,10 +25,10 @@ Changes are grouped by what they do, oldest first within each group.
 
 | Commit | Change |
 |---|---|
-| `051a7af` | Removed the notes under stop lists: "Dotted line / Green line: …", "Times include delays; the red tag shows how late." and "Live times for the whole line aren't available…". Only the notes about a missing key, earlier stops not being published, or the list still loading were kept. |
-| `de74ca1` | Clearer journey heading: the duration large ("52 min"), with "06:56 → 07:45 · 1 change at Genève" underneath (times include delays). Single-train lines got "Stops" with "Genève → Coppet · 26 min". Replaced the small grey "JOURNEY · 52 MIN · 1 CHANGE AT GENÈVE". |
-| `32d7892` | More space and a thin divider line between that heading and the stops. |
-| `1a89d35` | Removed "· train 1808" from next to the operator on the countdown card (the number stays in Details). |
+| `051a7af` | ~~Removed the notes under stop lists: "Dotted line / Green line: …", "Times include delays; the red tag shows how late." and "Live times for the whole line aren't available…". Only the notes about a missing key, earlier stops not being published, or the list still loading were kept.~~ **Re-applied on 23 Nov.** |
+| `de74ca1` | ~~Clearer journey heading: the duration large ("52 min"), with "06:56 → 07:45 · 1 change at Genève" underneath (times include delays). Single-train lines got "Stops" with "Genève → Coppet · 26 min". Replaced the small grey "JOURNEY · 52 MIN · 1 CHANGE AT GENÈVE".~~ **Re-applied on 23 Nov.** |
+| `32d7892` | ~~More space and a thin divider line between that heading and the stops.~~ **Re-applied on 23 Nov.** |
+| `1a89d35` | ~~Removed "· train 1808" from next to the operator on the countdown card (the number stays in Details).~~ **Re-applied on 23 Nov.** |
 | `6ee7a27` | ~~Removed the "Your trip:" label on the countdown card, so it reads "Lausanne → Lancy-Pont-Rouge".~~ **Re-applied on 23 Nov.** |
 
 ## 3. Delays and departures
