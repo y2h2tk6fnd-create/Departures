@@ -42,12 +42,16 @@ Changes are grouped by what they do, oldest first within each group.
 
 | Commit | Change |
 |---|---|
-| `a876b92` | **Bug fix.** The trip search sometimes gives the wrong train number (e.g. the morning run of the same line), which made the stops, times and position of a leg wrong (hours off). Each leg's train was looked up on the board of its boarding station by planned time and line, and a full route was only used if it passed your boarding station at your departure time. Live updates for each leg used the same matching. |
+| `a876b92` | ~~**Bug fix.** The trip search sometimes gives the wrong train number (e.g. the morning run of the same line), which made the stops, times and position of a leg wrong (hours off). Each leg's train was looked up on the board of its boarding station by planned time and line, and a full route was only used if it passed your boarding station at your departure time. Live updates for each leg used the same matching.~~ **Re-applied on 23 Nov.** |
 | `2649e97` | ~~On a tracked trip with a change, the countdown card showed the train you're on or changing to (badge, destination, colour stripe, photo) instead of always the first train.~~ **Re-applied on 23 Nov.** |
-| `404b9ef` | **Bug fix.** Saved trips were checked against the boarding stations' boards right after saving and at startup, not only when their page was opened (so a trip saved by tapping START immediately, or never reopened, was still corrected). |
-| `d7ae428` | **Bug fix.** The trip stages used the freshest times (the live stop list, then each leg's updated times) and kept the trip-level and leg-level times in step, so a late train counted as still travelling until its delayed arrival. Before, the change countdown could start while the first train was still a minute out. |
+| `404b9ef` | ~~**Bug fix.** Saved trips were checked against the boarding stations' boards right after saving and at startup, not only when their page was opened (so a trip saved by tapping START immediately, or never reopened, was still corrected).~~ **Re-applied on 23 Nov.** |
+| `d7ae428` | ~~**Bug fix.** The trip stages used the freshest times (the live stop list, then each leg's updated times) and kept the trip-level and leg-level times in step, so a late train counted as still travelling until its delayed arrival. Before, the change countdown could start while the first train was still a minute out.~~ **Re-applied on 23 Nov.** |
 
-## Worth bringing back first
+## Status
+
+As of 23 November every change in this list has been re-applied or replaced (the All stations button by the All stops switch).
+
+## Worth bringing back first (done)
 
 The four changes marked **Bug fix** (`83d4969`, `a876b92`, `404b9ef`, `d7ae428`) correct wrong information
 rather than change the look, and are independent of the All stations button. Without them:
