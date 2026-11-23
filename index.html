@@ -258,6 +258,19 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .sect h3 { margin: 0; font: 600 11px/1 var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 .sect .note { color: var(--muted); font-size: 14px; margin: 0; }
 .tinfo { display: grid; gap: 6px; }
+/* Trains: one expandable row per train */
+.trains > * { min-width: 0; }
+.trains .tdet { border-top: 1px solid var(--line); }
+.trains summary > * { min-width: 0; }
+.trains .tdet:first-of-type { border-top: 0; }
+.trains summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 12px 0; }
+.trains summary::-webkit-details-marker { display: none; }
+.trains summary::after { content: ""; flex: none; margin-left: auto; width: 9px; height: 9px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg) translate(-2px, -2px); transition: transform .15s; }
+.trains details[open] > summary::after { transform: rotate(-135deg) translate(-2px, -2px); }
+.trains .tsum { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1 1 auto; font-weight: 600; }
+.trains .tsum-to { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trains .tsum-model { flex: 0 1 auto; color: var(--muted); font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40%; }
+.trains .tdet-body { display: grid; gap: 14px; padding: 0 0 14px; }
 .tinfo + .tinfo { border-top: 1px solid var(--line); padding-top: 14px; margin-top: 4px; }
 .tinfo .for { font-size: 13px; color: var(--muted); }
 .tinfo img { width: 100%; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 10px; background: var(--bg); display: block; }
@@ -919,6 +932,14 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
   }
 
   // ---------- Train types ----------
+  const openTrains = new Set();      // which rows of the Trains list are open (kept across refreshes)
+  function modelName(t) {
+    if (!TT || !TT.hasKey() || !t.trainNo || !t.evu) return "";
+    const r = TT.lookup(t);
+    if (!r || r.state !== "ok" || r.info.unknown) return "";
+    const names = [...new Set(r.info.models.map((m) => TT.MODELS[m].name))];
+    return names.length ? names.join(" + ") : TT.MODELS[r.info.main].name;
+  }
   function trainInfo(t, forText, inBanner) {
     const box = el("div", "tinfo");
     if (forText) box.append(el("span", "for", forText));
@@ -961,7 +982,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
   function openDetail(key, from) {
     const j = findRow(key);
     if (!j) return;
-    state.detail = key; detailSnap = j; lastFocus = from || null; allStops = false; foldedCount = 0;
+    state.detail = key; detailSnap = j; lastFocus = from || null; allStops = false; foldedCount = 0; openTrains.clear();
     if (!(history.state && history.state.detail)) history.pushState({ detail: 1 }, "", "#train");
     $("detail").hidden = false; document.body.classList.add("locked");
     renderDetail();
@@ -1294,11 +1315,6 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
       inner.append(s);
     }
 
-    // Train type and photo (one per train on a trip with changes).
-    const ts = el("section", "sect"); ts.append(el("h3", "", "The train"));
-    rides.forEach((t, i) => ts.append(trainInfo(t, rides.length > 1 ? `${t.line} towards ${t.to}` : "", t === cur && !!photo)));
-    inner.append(ts);
-
     // Route of this train (departure boards).
     if (!j.trip && j.stops && j.stops.length > 1) {
       const s = el("section", "sect"); {
@@ -1313,18 +1329,38 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
       inner.append(s);
     }
 
-    // Facts
-    const k = el("section", "sect"); k.append(el("h3", "", "Details"));
-    const dl = el("dl", "kv");
-    const add = (a, b) => { if (b) dl.append(el("dt", "", a), el("dd", "", b)); };
-    add("Date", fmtDay.format(new Date(j.planned * 1000)));
-    add("Departure", hhmm(j.planned) + (j.delay > 0 ? `, expected ${hhmm(when(j))}` : ""));
-    if (j.trip) add("Arrival", `${hhmm(j.arr)} at ${j.arrName}` + (j.arrDelay > 0 ? `, expected ${hhmm(j.arrX)}` : ""));
-    add("Platform", (j.platform || "not announced yet") + (j.platformChanged ? " (changed)" : ""));
-    add("Operator", j.operator);
-    add("Train number", j.trainNo);
-    k.append(dl);
-    inner.append(k);
+    // The trains: one expandable row per train in the journey, with its type, photo and details.
+    const ts = el("section", "sect trains");
+    ts.append(el("h3", "", rides.length > 1 ? "Trains" : "The train"));
+    rides.forEach((t, idx) => {
+      const isLeg = !!(j.trip && t.from && t.arrive);
+      const det = el("details", "tdet");
+      det.open = openTrains.has(idx);
+      det.addEventListener("toggle", () => { if (det.open) openTrains.add(idx); else openTrains.delete(idx); });
+      const sum = el("summary");
+      const head = el("span", "tsum" + (t.livery ? " liv-" + t.livery : ""));
+      head.append(badge(t), el("span", "tsum-to", "towards " + t.to));
+      sum.append(head);
+      const model = modelName(t);
+      if (model) sum.append(el("span", "tsum-model", model));
+      det.append(sum);
+      const inside = el("div", "tdet-body");
+      inside.append(trainInfo(t, "", t === cur && !!photo));
+      // Details of this train on your journey
+      const dl = el("dl", "kv");
+      const add = (a, v) => { if (v) dl.append(el("dt", "", a), el("dd", "", v)); };
+      const from = isLeg ? t.from : { name: j.fromName || (state.from && state.from.name), dep: j.planned, depX: j.expected, depDelay: j.delay, platform: j.platform, platformChanged: j.platformChanged };
+      const last = isLeg ? t.arrive : (j.stops && j.stops.length > 1 ? j.stops[j.stops.length - 1] : null);
+      add("Date", fmtDay.format(new Date((from.dep ?? j.planned) * 1000)));
+      if (from.dep != null) add("Departure", `${hhmm(from.dep)} from ${from.name}` + (from.depDelay > 0 ? `, expected ${hhmm(from.depX ?? from.dep + from.depDelay * 60)}` : "") + (from.platform ? ` · platform ${from.platform}` + (from.platformChanged ? " (changed)" : "") : ""));
+      if (last && last.arr != null) add("Arrival", `${hhmm(last.arr)} at ${last.name}` + (last.arrDelay > 0 && last.arrX ? `, expected ${hhmm(last.arrX)}` : "") + (last.platform ? ` · platform ${last.platform}` : ""));
+      add("Operator", t.operator);
+      add("Train number", t.trainNo);
+      inside.append(dl);
+      det.append(inside);
+      ts.append(det);
+    });
+    inner.append(ts);
 
     body.append(inner);
     syncAllStops();
