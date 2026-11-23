@@ -27,7 +27,7 @@ Changes are grouped by what they do, oldest first within each group.
 | `de74ca1` | Clearer journey heading: the duration large ("52 min"), with "06:56 → 07:45 · 1 change at Genève" underneath (times include delays). Single-train lines got "Stops" with "Genève → Coppet · 26 min". Replaced the small grey "JOURNEY · 52 MIN · 1 CHANGE AT GENÈVE". |
 | `32d7892` | More space and a thin divider line between that heading and the stops. |
 | `1a89d35` | Removed "· train 1808" from next to the operator on the countdown card (the number stays in Details). |
-| `6ee7a27` | Removed the "Your trip:" label on the countdown card, so it reads "Lausanne → Lancy-Pont-Rouge". |
+| `6ee7a27` | ~~Removed the "Your trip:" label on the countdown card, so it reads "Lausanne → Lancy-Pont-Rouge".~~ **Re-applied on 23 Nov.** |
 
 ## 3. Delays and departures
 
