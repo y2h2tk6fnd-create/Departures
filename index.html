@@ -234,6 +234,9 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .hero .big.gone { font-size: 34px; color: var(--board-muted); }
 .hero .meta { color: var(--board-muted); font-size: 15px; }
 .hero .plat { grid-area: plat; align-self: start; width: 84px; height: 84px; border-radius: 10px; }
+.hero .plat.withcap { grid-template-rows: 1fr auto; padding: 8px 4px 7px; }
+.hero .plat.withcap b { font-size: 40px; align-self: center; }
+.plat .cap { font: 700 10px/1 var(--font-body); letter-spacing: .08em; text-transform: uppercase; opacity: .85; white-space: nowrap; }
 .hero .plat b { font-size: 46px; }
 .hero .plat b.long { font-size: 24px; }
 .hero .plat.unknown { border-color: rgb(255 255 255 / .3); color: var(--board-muted); }
@@ -1223,6 +1226,12 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
       var heroProg = progressEl(j);
       detailCells.push([null, j, () => { fillOnboard(w, j); heroProg[1](); }]);
       p = platBox(phasePlat(ph));
+      // Say what the sign shows once you're under way: where you arrive, or where your connection leaves.
+      if (ph.kind === "ride" || ph.kind === "arrived" || ph.kind === "change") {
+        const cap = ph.kind === "change" ? "Next dep." : "Arrival";
+        p.classList.add("withcap"); p.append(el("small", "cap", cap));
+        p.title = (ph.kind === "change" ? "Your connection leaves from platform " : "You arrive on platform ") + (phasePlat(ph).platform || "not announced yet");
+      }
       st.className = "status good"; st.replaceChildren(onboardText(ph, true));
     }
     hero.append(hl, h2, p, w, st);
