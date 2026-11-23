@@ -286,12 +286,12 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .stops li { position: relative; display: grid; grid-template-columns: 24px minmax(0, 1fr) auto 34px; gap: 0 10px; align-items: center; padding: 9px 0; min-height: 60px; }
 /* The line: each row draws the half above and the half below its stop. Your journey is dotted. */
 .stops li::before, .stops li::after { content: ""; position: absolute; left: 11px; width: 2px; background: var(--line); }
-.stops li::before { top: 0; height: 50%; }
-.stops li::after { top: 50%; bottom: 0; }
+.stops li::before { top: -1px; height: calc(50% + 1px); }             /* overlap a pixel: no seams between rows */
+.stops li::after { top: 50%; bottom: -1px; }
 .stops li:first-child::before, .stops li:last-child::after { display: none; }
-.stops li.past::before, .stops li.past::after, .stops li.pos::before { background: var(--muted); }
+.stops li.past::before, .stops li.past::after, .stops li.pos::before, .stops li.here::before { background: var(--muted); }   /* covered by the train */
 .stops li.ju::before, .stops li.jl::after { left: 10px; width: 0; background: none; border-left: 4px dotted var(--fg); }
-.stops li.past.ju::before, .stops li.past.jl::after, .stops li.pos.ju::before { border-left-color: var(--muted); }
+.stops li.past.ju::before, .stops li.past.jl::after, .stops li.pos.ju::before, .stops li.here.ju::before { border-left-color: var(--muted); }
 /* Saved trips: the part of your trip still ahead is solid fluorescent green, shrinking as the train moves. */
 .stops.green li.ju::before, .stops.green li.jl::after { left: 10px; width: 4px; border: 0; background: var(--trip); box-shadow: 0 0 6px var(--trip); }
 .stops.green li.past.ju::before, .stops.green li.past.jl::after, .stops.green li.pos.ju::before, .stops.green li.here.ju::before { left: 11px; width: 2px; background: var(--muted); box-shadow: none; }
