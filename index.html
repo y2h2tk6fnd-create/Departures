@@ -117,7 +117,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .chip[aria-pressed="true"] { border-color: var(--fg); color: var(--surface); background: var(--fg); }
 
 /* Board */
-.board { flex: 1 1 0; min-height: 420px; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-bottom: 0; border-radius: 14px 14px 0 0; overflow: hidden; }
+.board { flex: 1 1 0; min-height: 420px; display: flex; flex-direction: column; overflow: hidden; }   /* no frame: cards sit on the page */
 .board-head {
   background: var(--board); color: var(--board-fg); padding: 12px 16px; border-top: 4px solid var(--accent);
   display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
@@ -127,7 +127,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .list-wrap { position: relative; flex: 1 1 0; min-height: 0; display: flex; }
 .list {
   flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
-  position: relative; background: var(--bg); padding: 10px 10px calc(16px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 8px;
+  position: relative; background: var(--bg); padding: 0 0 calc(16px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 8px;
 }
 /* Departure card: line and destination on top, time or countdown big below, platform on the right. */
 .card {
