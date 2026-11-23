@@ -310,12 +310,9 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .allstops[aria-checked="true"] .sw { background: var(--fg); }
 .allstops[aria-checked="true"] .sw::after { transform: translateX(14px); background: var(--surface); }
 .stops li.pos.ahead::before { display: none; }
-/* Stops outside your part of the line (shown with All stops): clearly secondary. */
-.stops li.out { min-height: 46px; padding: 5px 0; }
-.stops li.out .n { font-size: 14.5px; font-weight: 400; color: var(--muted); }
-.stops li.out .tm b { font-size: 13.5px; font-weight: 500; color: var(--muted); }
-.stops li.out .sp { opacity: .45; min-width: 26px; height: 24px; font-size: 13px; }
-.stops li.out .pt:not(.term) { width: 9px; height: 9px; }
+/* Stops outside your part of the line (shown with All stops): same size, in grey. */
+.stops li.out .n, .stops li.out .tm b { color: var(--muted); }
+.stops li.out .sp { opacity: .45; }
 @media (prefers-reduced-motion: no-preference) {
   .stops .tr { animation: pulse 1.6s ease-out infinite; }
   @keyframes pulse { 0% { box-shadow: 0 0 0 2px var(--accent), 0 0 0 2px rgb(216 35 42 / .45); } 100% { box-shadow: 0 0 0 2px var(--accent), 0 0 0 12px rgb(216 35 42 / 0); } }
