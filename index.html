@@ -859,7 +859,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
       const ti = el("div", "tripinfo");
       if (j.dur) ti.append(el("b", "", j.dur));
       if (j.arr != null) {
-        ti.append(j.dur ? " · arr. " : "Arr. ", el("b", "", hhmm(j.arrX ?? j.arr)));
+        ti.append(j.dur ? " · arr. " : "Arr. ", el("b", "", hhmm(j.arr)));
         if (j.arrDelay > 0) ti.append(delayEl(j.arrDelay));
       }
       if (j.trip) ti.append(" · " + j.changeText);
@@ -1144,7 +1144,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
           if (planned == null) return;
           const x = el("span");
           if (delay > 0) { const c = delayEl(delay); c.title = `${delay} min late`; x.append(c); delayed = true; }
-          x.append(el("i", "lbl", label), el("b", "", hhmm(delay > 0 && expected != null ? expected : planned)));
+          x.append(el("i", "lbl", label), el("b", "", hhmm(planned)));            // planned time; the tag says how late
           tm.append(x);
         };
         if (!first) part("arr", s.arr, s.arrX, s.arrDelay);
@@ -1290,8 +1290,9 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
       const s = el("section", "sect"); {
         // "52 min" large, then "06:56 → 07:45 · 1 change at Genève" (times include delays).
         const sub = el("div", "sh-sub");
-        const dep = when(j), arr = j.arrX ?? j.arr;
-        sub.append(el("b", "", hhmm(dep)), " → ", el("b", "", arr != null ? hhmm(arr) : "–"));
+        sub.append(el("b", "", hhmm(j.planned)));
+        if (j.delay > 0) sub.append(delayEl(j.delay));
+        sub.append(" → ", el("b", "", j.arr != null ? hhmm(j.arr) : "–"));
         if (j.arrDelay > 0) sub.append(delayEl(j.arrDelay));
         sub.append(" · " + j.changeText);
         s.append(sectHead(j.dur || "Journey", sub));
@@ -1597,7 +1598,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     }
     const ts = ph.kind === "change" ? L.depX ?? L.dep : L.arrX ?? L.arr;
     const c = longCount(ts);
-    const meta = el("span", "meta", (ph.kind === "change" ? "dep. " : "arr. ") + hhmm(ts));
+    const meta = el("span", "meta", (ph.kind === "change" ? "dep. " + hhmm(L.dep) : "arr. " + hhmm(L.arr)));
     const d = ph.kind === "change" ? L.depDelay : L.arrDelay;
     if (d > 0) meta.append(delayEl(d));
     cell.append(el("span", "big " + (c === "now" ? "now" : "countdown"), c), meta);
