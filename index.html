@@ -223,7 +223,8 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .back::before { content: ""; width: 10px; height: 10px; border-left: 2.5px solid currentColor; border-bottom: 2.5px solid currentColor; transform: rotate(45deg); margin: 0 4px 0 4px; }
 .hero {
   position: relative; overflow: hidden;
-  background: var(--board); color: var(--board-fg); border-radius: 16px; padding: 23px 18px 20px; --stripe: linear-gradient(90deg, var(--accent), var(--accent)); --stripe-h: 5px; --glow: var(--accent);
+  background: var(--board); color: var(--board-fg); border-radius: 16px; padding: 23px 18px 20px; --stripe: linear-gradient(90deg, var(--accent), var(--accent)); --stripe-h: 5px;
+  --stripe-loop: linear-gradient(90deg, var(--accent) 0%, var(--accent) 50%, color-mix(in srgb, var(--accent), #ffffff 40%) 75%, var(--accent) 100%);
   display: grid; grid-template-columns: minmax(0, 1fr) 88px; grid-template-areas: "line plat" "dest plat" "when when" "status status" "prog prog" "add add"; gap: 8px 16px;
 }
 .hero .hline { grid-area: line; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -251,29 +252,29 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .addtrip.on::before { display: none; }
 .hero::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: var(--stripe-h); background: var(--stripe); background-size: 100% 100%; }
 .hero.liv { padding-top: 28px; --stripe-h: 8px; }
-.hero.liv-lex { --stripe: var(--g-lex); --glow: #8a3a8f; }
-.hero.liv-re33 { --stripe: var(--g-re33); --glow: #d8232a; }
-.hero.liv-sncf { --stripe: var(--g-sncf); --glow: #e4002b; }
-/* The moment the train leaves: the stripe lights up from within and a soft wave of light travels along it
-   (it brightens the stripe's own colours; nothing spills outside the stripe). */
+.hero.liv-lex { --stripe: var(--g-lex); --stripe-loop: linear-gradient(90deg, #1f4e9c 0%, #1f4e9c 9%, #8a3a8f 25%, #e30613 41%, #e30613 59%, #8a3a8f 75%, #1f4e9c 91%, #1f4e9c 100%); }
+.hero.liv-re33 { --stripe: var(--g-re33); --stripe-loop: linear-gradient(90deg, #d8232a 0%, #d8232a 11%, #7a1d22 29%, #2f2f2f 50%, #7a1d22 71%, #d8232a 89%, #d8232a 100%); }
+.hero.liv-sncf { --stripe: var(--g-sncf); --stripe-loop: linear-gradient(90deg, #8c1d64 0%, #c4004a 22.5%, #e4002b 35%, #f05a14 50%, #e4002b 65%, #c4004a 77.5%, #8c1d64 100%); }
+/* The moment the train leaves: the stripe's colours flow along it for one full loop (ending exactly where they
+   started), while it softly lights up from within and a gentle wave of light drifts across. */
 .hero::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: var(--stripe-h); pointer-events: none; opacity: 0;
-  background: radial-gradient(closest-side, rgb(255 255 255 / .85), rgb(255 255 255 / .35) 55%, rgb(255 255 255 / 0)) no-repeat;
-  background-size: 55% 400%; background-position: -70% 50%; mix-blend-mode: screen; }
+  background: radial-gradient(closest-side, rgb(255 255 255 / .6), rgb(255 255 255 / .2) 55%, rgb(255 255 255 / 0)) no-repeat;
+  background-size: 70% 400%; background-position: -90% 50%; mix-blend-mode: screen; }
 @media (prefers-reduced-motion: no-preference) {
-  .hero.departing::before { animation: stripe-light 3.2s cubic-bezier(.37, 0, .25, 1) 1; }
-  .hero.departing::after { animation: stripe-wave 2.8s cubic-bezier(.45, .05, .25, 1) .2s 1 both; }
+  .hero.departing::before { background: var(--stripe-loop); background-size: 200% 100%; background-repeat: repeat-x;
+    animation: stripe-flow 5s cubic-bezier(.45, 0, .2, 1) 1 both, stripe-light 5s ease-in-out 1; }
+  .hero.departing::after { animation: stripe-wave 4.4s cubic-bezier(.4, 0, .2, 1) .3s 1 both; }
 }
+@keyframes stripe-flow { from { background-position: 0% 0; } to { background-position: 200% 0; } }
 @keyframes stripe-light {
-  0%   { filter: brightness(1) saturate(1); }
-  35%  { filter: brightness(1.35) saturate(1.25); }
-  70%  { filter: brightness(1.12) saturate(1.1); }
-  100% { filter: brightness(1) saturate(1); }
+  0%, 100% { filter: brightness(1) saturate(1); }
+  40%      { filter: brightness(1.18) saturate(1.12); }
 }
 @keyframes stripe-wave {
-  0%   { opacity: 0; background-position: -70% 50%; }
-  18%  { opacity: 1; }
-  82%  { opacity: 1; }
-  100% { opacity: 0; background-position: 170% 50%; }
+  0%   { opacity: 0; background-position: -90% 50%; }
+  25%  { opacity: .9; }
+  75%  { opacity: .9; }
+  100% { opacity: 0; background-position: 190% 50%; }
 }
 .sect { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 10px; min-width: 0; }
 .sect h3 { margin: 0; font: 600 11px/1 var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
@@ -1451,7 +1452,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     depSeen = { key: depSeen.key, ts: null };          // once per departure
     if (!h) return;
     h.classList.remove("departing"); void h.offsetWidth; h.classList.add("departing");
-    setTimeout(() => h.classList.remove("departing"), 2600);
+    setTimeout(() => h.classList.remove("departing"), 5400);
   }
 
   function render() { renderModes(); renderList(); renderDetail(); renderUpdated(); syncInputs(); }
