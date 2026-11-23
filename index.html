@@ -267,8 +267,9 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 }
 @supports (color: color(display-p3 1 0 0)) {
   @media (dynamic-range: high) {
-    .hero.liv-lex.departing { --stripe-loop: linear-gradient(90deg, color(display-p3 .1 .35 1) 0%, color(display-p3 .1 .35 1) 9%, color(display-p3 .65 .2 .85) 25%, color(display-p3 1 .05 .1) 41%, color(display-p3 1 .05 .1) 59%, color(display-p3 .65 .2 .85) 75%, color(display-p3 .1 .35 1) 91%, color(display-p3 .1 .35 1) 100%); }
-    .hero.departing::after { background-image: radial-gradient(closest-side, color(display-p3 1.6 1.6 1.6), color(display-p3 1 1 1 / .4) 50%, transparent); }
+    /* HDR lives only in the light overlay, which fades out with the animation, so the stripe returns smoothly. */
+    .hero.departing::after { background-image: radial-gradient(closest-side, color(display-p3 1.6 1.6 1.6), color(display-p3 1 1 1 / .4) 50%, transparent), linear-gradient(color(display-p3 1.25 1.25 1.25 / .3), color(display-p3 1.25 1.25 1.25 / .3));
+      background-size: 70% 400%, 100% 100%; background-repeat: no-repeat; }
   }
 }
 @keyframes stripe-flow { from { background-position: 0% 0; } to { background-position: 200% 0; } }
@@ -276,12 +277,13 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
   0%, 100% { filter: brightness(1) saturate(1); }
   25%      { filter: brightness(1.7) saturate(1.5); }
   60%      { filter: brightness(1.25) saturate(1.2); }
+  85%      { filter: brightness(1.05) saturate(1.04); }
 }
 @keyframes stripe-wave {
-  0%   { opacity: 0; background-position: -90% 50%; }
-  25%  { opacity: .9; }
-  75%  { opacity: .9; }
-  100% { opacity: 0; background-position: 190% 50%; }
+  0%   { opacity: 0; background-position: -90% 50%, 0 0; }
+  20%  { opacity: .9; }
+  55%  { opacity: .75; }
+  100% { opacity: 0; background-position: 190% 50%, 0 0; }
 }
 .sect { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 10px; min-width: 0; }
 .sect h3 { margin: 0; font: 600 11px/1 var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
