@@ -12,6 +12,8 @@ Changes are grouped by what they do, oldest first within each group.
 
 ## 1. "All stations" button (replaced the fold rows)
 
+**23 Nov:** replaced by the new **All stops** switch in the card's top-right corner (unfolds every train's whole line, marks the train's position anywhere on it, greys stops outside your part at the same size, and stays visible while on). The rows below are kept for reference.
+
 | Commit | Change |
 |---|---|
 | `19c8922` | The "N earlier stops" and "N more stops" rows were removed and replaced by one small **All stations** toggle in the top-right corner of the line card. It unfolded the hidden stops of every train on the page at once (both trains on a trip with a change). While folded, if the train hadn't reached your part of the line yet, a row with the red marker above your first stop said where it was ("Train · 3 stops before Lancy-Pont-Rouge · between Chêne-Bourg and Genève-Eaux-Vives"). |
