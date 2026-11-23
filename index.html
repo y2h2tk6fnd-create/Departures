@@ -1281,7 +1281,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     if (saved || tripEnd(j) > now()) {
       const ab = el("button", "addtrip" + (saved ? " on" : ""), saved ? "✓ TRACKING" : "START");
       ab.setAttribute("aria-label", saved ? "Tracking this trip in My trips. Tap to stop tracking." : "Start: keep track of this train in My trips");
-      ab.addEventListener("click", () => { toggleTrip(j); renderDetail(); toast(isSaved(j.key) ? "Tracking — find it in My trips (☰ menu)." : "Stopped tracking."); });
+      ab.addEventListener("click", () => { toggleTrip(j); renderDetail(); });
       hero.append(ab);
     }
     inner.append(hero);
