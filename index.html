@@ -300,8 +300,12 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .stops li.pos .ptext span { font-weight: 400; color: var(--muted); }
 .stops-key { font-size: 12px; color: var(--muted); margin: 0; }
 /* Folded parts of the line: a dashed stretch with a count, tap to show the whole line. */
-.sect-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.sect-head h3 { min-width: 0; }
+.sect-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding-bottom: 14px; margin-bottom: 8px; border-bottom: 1px solid var(--line); }
+.sh-text { min-width: 0; display: grid; gap: 3px; }
+.sect h3.sh-title { margin: 0; font: 700 24px/1.1 var(--font-display); letter-spacing: 0; text-transform: none; color: var(--fg); }
+.sh-sub { color: var(--muted); font-size: 15px; font-variant-numeric: tabular-nums; }
+.sh-sub b { color: var(--fg); font-weight: 600; }
+.sect-head .allstops { margin-top: 4px; }
 /* All stops switch */
 .allstops { flex: none; display: inline-flex; align-items: center; gap: 8px; border: 0; background: none; padding: 2px 0; color: var(--muted); font: 600 12.5px/1 var(--font-body); }
 .allstops .sw { position: relative; width: 34px; height: 20px; border-radius: 10px; background: var(--line); transition: background-color .15s; }
@@ -1057,14 +1061,17 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
   // "All stops" switch: show the whole line of every train in the journey, or only your part of it.
   // It shows when some stops are folded away, and always while it is switched on.
   let allStops = false, foldedCount = 0;
-  function sectHead(title) {
+  function sectHead(title, sub) {
     const head = el("div", "sect-head");
     const b = el("button", "allstops");
     b.setAttribute("role", "switch");
     b.append(el("span", "", "All stops"), el("span", "sw"));
     b.hidden = true;
     b.addEventListener("click", () => { allStops = !allStops; refreshRoutes(); });
-    head.append(el("h3", "", title), b);
+    const t = el("div", "sh-text");
+    t.append(el("h3", "sh-title", title));
+    if (sub) t.append(sub);
+    head.append(t, b);
     return head;
   }
   function syncAllStops() {
@@ -1231,7 +1238,15 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 
     // Trip: legs and changes.
     if (j.trip && j.legs) {
-      const s = el("section", "sect"); s.append(sectHead(`Journey · ${j.dur}${j.dur ? " · " : ""}${j.changeText}`));
+      const s = el("section", "sect"); {
+        // "52 min" large, then "06:56 → 07:45 · 1 change at Genève" (times include delays).
+        const sub = el("div", "sh-sub");
+        const dep = when(j), arr = j.arrX ?? j.arr;
+        sub.append(el("b", "", hhmm(dep)), " → ", el("b", "", arr != null ? hhmm(arr) : "–"));
+        if (j.arrDelay > 0) sub.append(delayEl(j.arrDelay));
+        sub.append(" · " + j.changeText);
+        s.append(sectHead(j.dur || "Journey", sub));
+      }
       let prevArr = null;
       for (const l of j.legs) {
         if (l.walk) {
@@ -1261,7 +1276,12 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 
     // Route of this train (departure boards).
     if (!j.trip && j.stops && j.stops.length > 1) {
-      const s = el("section", "sect"); s.append(sectHead(`Line · where the train is`));
+      const s = el("section", "sect"); {
+        const sub = el("div", "sh-sub");
+        sub.append(el("b", "", j.stops[0].name), " → ", el("b", "", j.stops[j.stops.length - 1].name));
+        if (j.dur) sub.append(" · " + j.dur);
+        s.append(sectHead("Stops", sub));
+      }
       // A saved train from a plain departure board: your part of the line runs to the end of the line.
       const saved = isSaved(j.key);
       s.append(routeBox(j, saved ? [j.stops[0].name, j.stops[j.stops.length - 1].name] : [j.stops[0].name], j.delay || 0, ["Your station", "End of the line"], saved));
