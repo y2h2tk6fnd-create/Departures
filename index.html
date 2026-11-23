@@ -254,16 +254,27 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .hero.liv-lex { --stripe: var(--g-lex); --glow: #8a3a8f; }
 .hero.liv-re33 { --stripe: var(--g-re33); --glow: #d8232a; }
 .hero.liv-sncf { --stripe: var(--g-sncf); --glow: #e4002b; }
-/* The moment the train leaves: the stripe glows, its gradient sweeps along, and a shine runs across it. */
+/* The moment the train leaves: the stripe lights up from within and a soft wave of light travels along it
+   (it brightens the stripe's own colours; nothing spills outside the stripe). */
 .hero::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: var(--stripe-h); pointer-events: none; opacity: 0;
-  background: linear-gradient(100deg, transparent 0 38%, rgb(255 255 255 / .9) 50%, transparent 62% 100%) no-repeat; background-size: 45% 100%; background-position: -60% 0; }
+  background: radial-gradient(closest-side, rgb(255 255 255 / .85), rgb(255 255 255 / .35) 55%, rgb(255 255 255 / 0)) no-repeat;
+  background-size: 55% 400%; background-position: -70% 50%; mix-blend-mode: screen; }
 @media (prefers-reduced-motion: no-preference) {
-  .hero.departing::before { background-size: 200% 100%; animation: stripe-sweep 2.4s ease-in-out 1, stripe-glow 2.4s ease-in-out 1; }
-  .hero.departing::after { animation: stripe-shine 1.5s ease-in-out .15s 1; }
+  .hero.departing::before { animation: stripe-light 3.2s cubic-bezier(.37, 0, .25, 1) 1; }
+  .hero.departing::after { animation: stripe-wave 2.8s cubic-bezier(.45, .05, .25, 1) .2s 1 both; }
 }
-@keyframes stripe-sweep { from { background-position: 100% 0; } to { background-position: 0 0; } }
-@keyframes stripe-glow { 0%, 100% { box-shadow: 0 0 0 0 transparent; } 35% { box-shadow: 0 0 16px 4px var(--glow); } }
-@keyframes stripe-shine { 0% { opacity: 1; background-position: -60% 0; } 100% { opacity: 1; background-position: 160% 0; } }
+@keyframes stripe-light {
+  0%   { filter: brightness(1) saturate(1); }
+  35%  { filter: brightness(1.35) saturate(1.25); }
+  70%  { filter: brightness(1.12) saturate(1.1); }
+  100% { filter: brightness(1) saturate(1); }
+}
+@keyframes stripe-wave {
+  0%   { opacity: 0; background-position: -70% 50%; }
+  18%  { opacity: 1; }
+  82%  { opacity: 1; }
+  100% { opacity: 0; background-position: 170% 50%; }
+}
 .sect { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 10px; min-width: 0; }
 .sect h3 { margin: 0; font: 600 11px/1 var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 .sect .note { color: var(--muted); font-size: 14px; margin: 0; }
