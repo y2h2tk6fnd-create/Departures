@@ -1223,7 +1223,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     hero.append(hl, h2, p, w, st);
     if (ph && ph.kind !== "wait") hero.append(heroProg[0]);
     const saved = isSaved(j.key);
-    {                                                // START on every train, also ones that have already left or arrived
+    if (saved || tripEnd(j) > now()) {
       const ab = el("button", "addtrip" + (saved ? " on" : ""), saved ? "✓ TRACKING" : "START");
       ab.setAttribute("aria-label", saved ? "Tracking this trip in My trips. Tap to stop tracking." : "Start: keep track of this train in My trips");
       ab.addEventListener("click", () => { toggleTrip(j); renderDetail(); toast(isSaved(j.key) ? "Tracking — find it in My trips (☰ menu)." : "Stopped tracking."); });
@@ -1591,8 +1591,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
   }
   function cleanTrips() {
     const before = state.trips.length;
-    // Gone half an hour after arrival, but a trip saved after it ended stays at least an hour after saving.
-    state.trips = state.trips.filter((t) => tripEnd(t) > now() - 30 * 60 || Date.now() - (t.savedAt || 0) < 60 * 60000);
+    state.trips = state.trips.filter((t) => tripEnd(t) > now() - 30 * 60);   // gone half an hour after arrival
     if (state.trips.length !== before) save();
   }
   function renderTrips() {
