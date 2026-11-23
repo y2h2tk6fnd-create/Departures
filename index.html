@@ -223,7 +223,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .back::before { content: ""; width: 10px; height: 10px; border-left: 2.5px solid currentColor; border-bottom: 2.5px solid currentColor; transform: rotate(45deg); margin: 0 4px 0 4px; }
 .hero {
   position: relative; overflow: hidden;
-  background: var(--board); color: var(--board-fg); border-radius: 16px; padding: 18px 18px 20px; border-top: 5px solid var(--accent);
+  background: var(--board); color: var(--board-fg); border-radius: 16px; padding: 23px 18px 20px; --stripe: linear-gradient(90deg, var(--accent), var(--accent)); --stripe-h: 5px; --glow: var(--accent);
   display: grid; grid-template-columns: minmax(0, 1fr) 88px; grid-template-areas: "line plat" "dest plat" "when when" "status status" "prog prog" "add add"; gap: 8px 16px;
 }
 .hero .hline { grid-area: line; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -249,11 +249,21 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .addtrip::before { content: ""; width: 0; height: 0; border-left: 8px solid currentColor; border-top: 5px solid transparent; border-bottom: 5px solid transparent; }
 .addtrip.on { background: var(--trip); color: var(--trip-ink); }
 .addtrip.on::before { display: none; }
-.hero.liv { border-top: 0; padding-top: 28px; }
-.hero.liv::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 8px; }
-.hero.liv-lex::before { background: var(--g-lex); }
-.hero.liv-re33::before { background: var(--g-re33); }
-.hero.liv-sncf::before { background: var(--g-sncf); }
+.hero::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: var(--stripe-h); background: var(--stripe); background-size: 100% 100%; }
+.hero.liv { padding-top: 28px; --stripe-h: 8px; }
+.hero.liv-lex { --stripe: var(--g-lex); --glow: #8a3a8f; }
+.hero.liv-re33 { --stripe: var(--g-re33); --glow: #d8232a; }
+.hero.liv-sncf { --stripe: var(--g-sncf); --glow: #e4002b; }
+/* The moment the train leaves: the stripe glows, its gradient sweeps along, and a shine runs across it. */
+.hero::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: var(--stripe-h); pointer-events: none; opacity: 0;
+  background: linear-gradient(100deg, transparent 0 38%, rgb(255 255 255 / .9) 50%, transparent 62% 100%) no-repeat; background-size: 45% 100%; background-position: -60% 0; }
+@media (prefers-reduced-motion: no-preference) {
+  .hero.departing::before { background-size: 200% 100%; animation: stripe-sweep 2.4s ease-in-out 1, stripe-glow 2.4s ease-in-out 1; }
+  .hero.departing::after { animation: stripe-shine 1.5s ease-in-out .15s 1; }
+}
+@keyframes stripe-sweep { from { background-position: 100% 0; } to { background-position: 0 0; } }
+@keyframes stripe-glow { 0%, 100% { box-shadow: 0 0 0 0 transparent; } 35% { box-shadow: 0 0 16px 4px var(--glow); } }
+@keyframes stripe-shine { 0% { opacity: 1; background-position: -60% 0; } 100% { opacity: 1; background-position: 160% 0; } }
 .sect { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 10px; min-width: 0; }
 .sect h3 { margin: 0; font: 600 11px/1 var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 .sect .note { color: var(--muted); font-size: 14px; margin: 0; }
@@ -1399,8 +1409,38 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     }
     if (phaseMoved) renderTrips();
     if (state.detail && isSaved(state.detail) && detailPhase !== phaseKey(findRow(state.detail) || {})) renderDetail();
+    watchDeparture();
     for (const [cell, j, fn] of detailCells) { if (cell) fillWhen(cell, j); if (fn) fn(); }
     if (state.detail && Math.floor(Date.now() / 1000) % 5 === 0) refreshRoutes();
+  }
+
+  // Play the departure animation on the top card when the train shown there leaves while the page is open.
+  let depSeen = null;                 // { key, ts }: the departure we're waiting for
+  function departureTs(j) {
+    if (isSaved(j.key) && j.trip) {   // tracked trip: the next train of the journey to leave
+      const legs = legsOf(j), n = now();
+      const next = legs.find((L) => (L.depX ?? L.dep) != null && (L.depX ?? L.dep) > n - 2);
+      return next ? (next.depX ?? next.dep) : null;
+    }
+    return when(j);
+  }
+  function watchDeparture() {
+    if (!state.detail) { depSeen = null; return; }
+    const j = findRow(state.detail) || detailSnap;
+    if (!j) return;
+    const ts = departureTs(j);
+    // We were waiting for a departure on this page and its time has now come: play it, once.
+    if (depSeen && depSeen.key === j.key && depSeen.ts != null && now() >= depSeen.ts && now() - depSeen.ts < 5) { celebrate(); return; }
+    // Otherwise remember the next departure still to come (it follows delays as they change).
+    if (ts != null && ts > now()) depSeen = { key: j.key, ts };
+    else if (!depSeen || depSeen.key !== j.key) depSeen = { key: j.key, ts: null };
+  }
+  function celebrate() {
+    const h = document.querySelector("#d-body .hero");
+    depSeen = { key: depSeen.key, ts: null };          // once per departure
+    if (!h) return;
+    h.classList.remove("departing"); void h.offsetWidth; h.classList.add("departing");
+    setTimeout(() => h.classList.remove("departing"), 2600);
   }
 
   function render() { renderModes(); renderList(); renderDetail(); renderUpdated(); syncInputs(); }
