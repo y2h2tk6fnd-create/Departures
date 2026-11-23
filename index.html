@@ -496,7 +496,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
       <button id="key-clear" class="secondary">Remove</button>
     </div>
     <span class="status" id="key-status" aria-live="polite"></span>
-    <p class="about">Live data from transport.opendata.ch (SBB timetable and real-time delays), refreshed every 30 seconds. All times are Swiss time. Train types come from SBB's train formation data; photos from Wikimedia Commons.</p>
+    <p class="about">Live data from transport.opendata.ch (SBB timetable and real-time delays), refreshed every 30 seconds. All times are Swiss time. Train types come from SBB's train formation data; photos from Wikimedia Commons (<a href="trains/CREDITS.md" target="_blank" rel="noopener">photo credits and licences</a>).</p>
   </section>
 
   <section class="trip" aria-label="Search">
@@ -1020,9 +1020,9 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     }
     if (facts.childElementCount) box.append(facts);
     if (photo) {
-      const c = el("span", "credit", (inBanner ? "Photo at the top: " : "Photo: ") + photo.credit + ", ");
-      const a = el("a", "", photo.license); a.href = photo.source; a.target = "_blank"; a.rel = "noopener";
-      c.append(a, ", via Wikimedia Commons"); box.append(c);
+      // No credit line on the card; the photo itself carries it (long-press / hover), and all credits are in Settings.
+      const img = box.querySelector("img");
+      if (img) img.title = `Photo: ${photo.credit}, ${photo.license}, Wikimedia Commons`;
     }
     return box;
   }
