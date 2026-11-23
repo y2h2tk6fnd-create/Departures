@@ -1165,7 +1165,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
         const past = pos.kind === "after" || i < pos.i || (pos.kind === "between" && i === pos.i);
         const here = pos.kind === "at" && pos.i === i;
         const trip = a >= 0 && b >= 0;
-        const cls = [first || last ? "end" : "", past ? "past" : "", i === a || i === b ? "mine" : "",
+        const cls = [first || last ? "end" : "", past ? "past" : "", here ? "here" : "", i === a || i === b ? "mine" : "",
                      trip && i > a && i <= b ? "ju" : "", trip && i >= a && i < b ? "jl" : "",
                      (a >= 0 && i < a) || (b >= 0 && i > b) ? "out" : ""];
         const li = el("li", cls.filter(Boolean).join(" "));
