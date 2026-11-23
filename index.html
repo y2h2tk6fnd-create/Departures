@@ -623,6 +623,26 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
   };
   const cleanPlat = (p) => (p == null ? "" : String(p).replace(/!$/, "").trim());
 
+  // The Swiss timetable lists cross-border trains under SBB (responsible for the Swiss stretch).
+  // Show who actually runs them. TER and TGV (non-Lyria) are SNCF, Lyria is TGV Lyria; ICE/IC Germany-bound stay as given.
+  // Léman Express is run jointly: a Régiolis is an SNCF train, a FLIRT an SBB one (from the train formation data).
+  function opLabel(t) {
+    if (t.livery === "lex" && TT && TT.hasKey() && t.trainNo && t.evu) {
+      const r = TT.lookup(t);
+      if (r && r.state === "ok" && !r.info.unknown) {
+        if (r.info.main === "regiolis") return "SNCF · Léman Express";
+        if (r.info.main === "flirtLex") return "SBB · Léman Express";
+      }
+      return "Léman Express";
+    }
+    return t.operator || "";
+  }
+  function realOperator(cat, num, op) {
+    const c = String(cat || "").toUpperCase();
+    if (c === "TGV" || /LYRIA/i.test(op)) return "TGV Lyria";
+    if (c === "TER" || c === "OUIGO" || c === "INOUI" || /SNCF/i.test(op)) return "SNCF";
+    return op;
+  }
   function trainFields(j, planned) {
     const cat = j.category || "";
     const num = j.number && !/^\d{4,}$/.test(String(j.number)) ? String(j.number) : "";
@@ -633,7 +653,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
       livery: /^L\d+$/i.test(num) || /^(SL|RL)\d*$/i.test(cat) ? "lex"
             : cat === "RE" && num === "33" ? "re33"
             : /SNCF/i.test(j.operator || "") || /^(TER|TGV|OUIGO|INOUI|TER200)$/i.test(cat) ? "sncf" : "",
-      operator: j.operator || "",
+      operator: realOperator(cat, num, j.operator || ""),
       trainNo: /^\d+$/.test(String(j.name || "")) ? String(parseInt(j.name, 10)) : null,
       evu: TT ? TT.evuFor(j.operator) : null,
       date: planned != null ? fmtDate.format(new Date(planned * 1000)) : null
@@ -811,7 +831,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     const next = rows.filter((r) => !isGone(r)).sort((a, b) => a.planned - b.planned || when(a) - when(b));
     return { gone, next };
   }
-  const findRow = (key) => state.journeys.find((r) => r.key === key) || state.past.get(key) || state.trips.find((r) => r.key === key) || null;
+  const findRow = (key) => state.journeys.find((r) => r.key === key) || state.extra.get(key) || state.past.get(key) || state.trips.find((r) => r.key === key) || null;
 
   // ---------- Rendering helpers ----------
   const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
@@ -1291,7 +1311,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     // Hero: line, destination, the big time and the platform.
     const hero = el("div", "hero" + (cur.livery ? " liv liv-" + cur.livery : ""));
     const hl = el("div", "hline"); hl.append(badge(cur));
-    if (cur.operator) hl.append(el("span", "op", cur.operator));
+    if (opLabel(cur)) hl.append(el("span", "op", opLabel(cur)));
     const h2 = el("h2"); h2.id = "d-title";
     h2.append("to " + (cur.to || j.to));
     const fromName = j.trip ? (j.legs && j.legs[0] && j.legs[0].from ? j.legs[0].from.name : state.from && state.from.name) : (j.fromName || (state.from && state.from.name));
@@ -1418,7 +1438,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
       add("Date", fmtDay.format(new Date((from.dep ?? j.planned) * 1000)));
       if (from.dep != null) add("Departure", stopLine(from.dep, from.depDelay, from.name, from.platform, from.platformChanged));
       if (last && last.arr != null) add("Arrival", stopLine(last.arr, last.arrDelay, last.name, last.platform, last.platformChanged));
-      add("Train", [t.operator, t.trainNo ? "no. " + t.trainNo : ""].filter(Boolean).join(" · "));
+      add("Train", [opLabel(t), t.trainNo ? "no. " + t.trainNo : ""].filter(Boolean).join(" · "));
       inside.append(dl);
       const credit = inside.querySelector(".credit");
       if (credit) inside.append(credit);                // the photo credit goes last
