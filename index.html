@@ -258,17 +258,24 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 /* The moment the train leaves: the stripe's colours flow along it for one full loop (ending exactly where they
    started), while it softly lights up from within and a gentle wave of light drifts across. */
 .hero::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: var(--stripe-h); pointer-events: none; opacity: 0;
-  background: radial-gradient(closest-side, rgb(255 255 255 / .6), rgb(255 255 255 / .2) 55%, rgb(255 255 255 / 0)) no-repeat;
+  background: radial-gradient(closest-side, rgb(255 255 255 / .95), rgb(255 255 255 / .35) 50%, rgb(255 255 255 / 0)) no-repeat;
   background-size: 70% 400%; background-position: -90% 50%; mix-blend-mode: screen; }
 @media (prefers-reduced-motion: no-preference) {
   .hero.departing::before { background: var(--stripe-loop); background-size: 200% 100%; background-repeat: repeat-x;
-    animation: stripe-flow 5s cubic-bezier(.45, 0, .2, 1) 1 both, stripe-light 5s ease-in-out 1; }
-  .hero.departing::after { animation: stripe-wave 4.4s cubic-bezier(.4, 0, .2, 1) .3s 1 both; }
+    animation: stripe-flow 2.6s cubic-bezier(.6, 0, .15, 1) 1 both, stripe-light 2.6s ease-out 1; }
+  .hero.departing::after { animation: stripe-wave 1.9s cubic-bezier(.55, 0, .2, 1) .1s 1 both; }
+}
+@supports (color: color(display-p3 1 0 0)) {
+  @media (dynamic-range: high) {
+    .hero.liv-lex.departing { --stripe-loop: linear-gradient(90deg, color(display-p3 .1 .35 1) 0%, color(display-p3 .1 .35 1) 9%, color(display-p3 .65 .2 .85) 25%, color(display-p3 1 .05 .1) 41%, color(display-p3 1 .05 .1) 59%, color(display-p3 .65 .2 .85) 75%, color(display-p3 .1 .35 1) 91%, color(display-p3 .1 .35 1) 100%); }
+    .hero.departing::after { background-image: radial-gradient(closest-side, color(display-p3 1.6 1.6 1.6), color(display-p3 1 1 1 / .4) 50%, transparent); }
+  }
 }
 @keyframes stripe-flow { from { background-position: 0% 0; } to { background-position: 200% 0; } }
 @keyframes stripe-light {
   0%, 100% { filter: brightness(1) saturate(1); }
-  40%      { filter: brightness(1.18) saturate(1.12); }
+  25%      { filter: brightness(1.7) saturate(1.5); }
+  60%      { filter: brightness(1.25) saturate(1.2); }
 }
 @keyframes stripe-wave {
   0%   { opacity: 0; background-position: -90% 50%; }
@@ -1452,7 +1459,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     depSeen = { key: depSeen.key, ts: null };          // once per departure
     if (!h) return;
     h.classList.remove("departing"); void h.offsetWidth; h.classList.add("departing");
-    setTimeout(() => h.classList.remove("departing"), 5400);
+    setTimeout(() => h.classList.remove("departing"), 3000);
   }
 
   function render() { renderModes(); renderList(); renderDetail(); renderUpdated(); syncInputs(); }
