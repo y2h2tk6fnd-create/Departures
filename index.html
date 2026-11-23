@@ -1676,11 +1676,16 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     state.trips = state.trips.filter((t) => tripEnd(t) > now() - 30 * 60);   // gone half an hour after arrival
     if (state.trips.length !== before) save();
   }
-  function renderTrips() {
-    cleanTrips();
-    const n = state.trips.filter((t) => !isGone(t)).length;
+  // The green number on the menu button: trips not finished yet (waiting, on board or changing).
+  function updateTripCount() {
+    const n = state.trips.filter((t) => tripPhase(t).kind !== "arrived").length;
     $("trip-count").hidden = !n; $("trip-count").textContent = n;
     $("menu-btn").setAttribute("aria-label", `Menu: my trips${n ? " (" + n + ")" : ""} and settings`);
+  }
+  setInterval(updateTripCount, 30000);
+  function renderTrips() {
+    cleanTrips();
+    updateTripCount();
     const box = $("trips"); box.replaceChildren(); menuCells.length = 0;
     if (!state.trips.length) { box.append(el("p", "none", "No trips yet. Open a train and tap START to keep track of it here.")); return; }
     for (const t of [...state.trips].sort((a, b) => a.planned - b.planned)) {
