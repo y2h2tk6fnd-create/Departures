@@ -35,8 +35,8 @@ Changes are grouped by what they do, oldest first within each group.
 
 | Commit | Change |
 |---|---|
-| `83d4969` | **Bug fix.** A delayed train kept getting updates after its planned time (the board fetched from 20 minutes ago, since the timetable lists departures by planned time) and only showed as "Departed" once it had really left. Before, a train whose delay grew after its planned time could show "Departed" while still waiting at the platform. |
-| `3ff8b41` | The countdown ran to the **planned** departure (a delay was shown as a tag but not added). Once the planned time had passed, a late train showed **Delayed +3′** with a countdown to its estimated departure; "Departed" only after that. |
+| `83d4969` | ~~**Bug fix.** A delayed train kept getting updates after its planned time (the board fetched from 20 minutes ago, since the timetable lists departures by planned time) and only showed as "Departed" once it had really left. Before, a train whose delay grew after its planned time could show "Departed" while still waiting at the platform.~~ **Re-applied on 23 Nov.** |
+| `3ff8b41` | ~~The countdown ran to the **planned** departure (a delay was shown as a tag but not added). Once the planned time had passed, a late train showed **Delayed +3′** with a countdown to its estimated departure; "Departed" only after that.~~ **Re-applied on 23 Nov.** |
 
 ## 4. Trips with a change (correct trains and times)
 
