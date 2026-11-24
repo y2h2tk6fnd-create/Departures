@@ -1167,20 +1167,22 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     const r = liveRoutes.get(k);
     if (!r || (r.state !== "loading" && Date.now() - r.at > 60000)) fetchLiveRoute(k, t, plan, r);
     const live = liveRoutes.get(k);
-    if (live && live.stops) return { stops: extend(withPlatforms(live.stops, plan), t.stops), full: true, live: true };
-    const stops = plan.filter((p) => p.name).map((p) => ({ name: p.name, arr: p.arr, dep: p.dep, arrX: null, depX: null,
+    const planStops = plan.filter((p) => p.name).map((p) => ({ name: p.name, arr: p.arr, dep: p.dep, arrX: null, depX: null,
       arrDelay: 0, depDelay: 0, delay: 0, platform: p.platform, platformChanged: false }));
-    return stops.length > 1 ? { stops: extend(stops, t.stops), full: true, loading: !live || live.state === "loading" } : { ...fallback, why: "none" };
+    const liveStops = live && live.stops ? withPlatforms(live.stops, plan) : [];
+    const line = mergeLine(t.stops || [], liveStops, planStops);
+    if (line.length < 2) return { ...fallback, why: "none" };
+    return { stops: line, full: true, live: liveStops.length > 0, loading: !liveStops.length && (!live || live.state === "loading") };
   }
-  // The formation data can stop at the border (a TGV to Paris ends at Bellegarde there):
-  // carry on with the stops from this station's board beyond the last station both know.
-  function extend(full, own) {
-    if (!own || own.length < 2) return full;
-    for (let k = own.length - 1; k >= 0; k--) {
-      const at = full.findIndex((x) => x.name === own[k].name);
-      if (at >= 0) return k === own.length - 1 ? full : full.slice(0, at + 1).concat(own.slice(k + 1));
-    }
-    return own;          // the full route doesn't reach your stations at all: use this station's own list
+  // The whole line from up to three sources, which can each cover only part of it: this station's own list
+  // (your part, live), the board at the train's first station (live, but for trains from France it ends at the
+  // border) and the formation data (planned, the whole Swiss part). Each stop is taken from the best source that
+  // has it, and the line is put in order by time.
+  function mergeLine(own, live, plan) {
+    const byName = new Map();
+    for (const list of [plan, live, own]) for (const s of list) if (s && s.name) byName.set(s.name, { ...(byName.get(s.name) || {}), ...s });
+    const t = (s) => s.dep ?? s.arr ?? Infinity;
+    return [...byName.values()].sort((a, b) => t(a) - t(b));
   }
   // The live data only has a platform for some stops; the formation data has the planned one for each.
   function withPlatforms(stops, plan) {
@@ -1771,7 +1773,10 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     const legs = legsOf(t), n = now();
     for (let i = 0; i < legs.length; i++) {
       const L = legs[i], dep = L.depX ?? L.dep, arr = L.arrX ?? L.arr;
-      if (dep != null && n < dep + GONE_AFTER_S) return { kind: i === 0 ? "wait" : "change", i, L, legs };
+      // The first train counts as gone as soon as the countdown card would say "Departed" (its time and the live
+      // route's can differ by a minute), so the card always switches to the on-board view with the progress bar.
+      const gone = i === 0 && t.planned != null && isGone(t);
+      if (dep != null && n < dep + GONE_AFTER_S && !gone) return { kind: i === 0 ? "wait" : "change", i, L, legs };
       if (arr != null && n < arr) return { kind: "ride", i, L, legs, next: legs[i + 1] || null };
     }
     return { kind: "arrived", i: legs.length - 1, L: legs[legs.length - 1], legs };
