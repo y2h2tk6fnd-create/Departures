@@ -100,6 +100,29 @@
     return [...byStop.values()].sort((a, b) => (a.dep ?? a.arr) - (b.dep ?? b.arr));
   }
 
+  // The carriages in order, with what's in them and the platform sectors they stop at, per station.
+  function coachesOf(vs, evu) {
+    return [...vs].sort((a, b) => (a.position || 0) - (b.position || 0)).map((v) => {
+      const p = v.vehicleProperties || {}, acc = p.accessibilityProperties || {}, pic = p.pictoProperties || {};
+      const model = classify(v, evu);
+      const tn = String((v.vehicleIdentifier || {}).typeCodeName || "");   // e.g. "B(2E/Velo)", "Bt(2E)Fam", "WRB(2E)"
+      const sectors = {};
+      for (const st of v.formationVehicleAtScheduledStops || []) {
+        const key = (st.stopPoint && (st.stopPoint.name || st.stopPoint.uic)) || "";
+        if (key && st.sectors) sectors[key] = st.sectors.split(",").map((x) => x.trim()).filter(Boolean);
+      }
+      return {
+        first: (p.number1class || 0) > 0, second: (p.number2class || 0) > 0,
+        loco: model ? MODELS[model].role === "loco" : !((p.number1class || 0) + (p.number2class || 0) + (p.numberRestaurantSpace || 0)),
+        restaurant: (p.numberRestaurantSpace || 0) > 0 || /^WR/.test(tn),
+        family: !!pic.familyZonePicto || /Fam/.test(tn), business: !!pic.businessZonePicto,
+        bike: !!pic.bikePicto || (p.numberBikeHooks || 0) > 0 || !!p.bikePlatform || /Velo/i.test(tn),
+        wheelchair: !!pic.wheelchairPicto || (acc.numberWheelchairSpaces || 0) > 0,
+        closed: !!p.closed, sectors
+      };
+    });
+  }
+
   // Summarise a formation: the models in order, the main one, cars, seats, length and route.
   function summarise(data, evu) {
     const vehicles = [];
@@ -114,15 +137,16 @@
     const loco = ids.find((i) => MODELS[i].role === "loco");
     const main = units[0] || loco;
     // A train can list one formation per section of its route (often identical): use the largest.
-    let cars = 0, seats = 0, length = 0;
+    let cars = 0, seats = 0, length = 0, biggest = null;
     for (const f of data.formations || []) {
       const m = f.metaInformation || {};
-      if ((m.numberVehicles || 0) > cars) { cars = m.numberVehicles || 0; seats = m.numberSeats || 0; length = m.length || 0; }
+      if ((m.numberVehicles || 0) > cars) { cars = m.numberVehicles || 0; seats = m.numberSeats || 0; length = m.length || 0; biggest = f; }
     }
+    const coaches = coachesOf((biggest || (data.formations || [])[0] || {}).formationVehicles || [], evu);
     if (!cars) cars = vehicles.filter((v) => MODELS[classify(v, evu)]?.role !== "loco").length;
     const route = routeOf(vehicles);
-    if (!main) return { unknown: true, route, raw: [...new Set(vehicles.map((v) => v.vehicleIdentifier?.typeCodeName).filter(Boolean))].slice(0, 3).join(", "), cars, seats, length };
-    return { main, models: units, loco, cars, seats, length: Math.round(length), route };
+    if (!main) return { unknown: true, route, coaches, raw: [...new Set(vehicles.map((v) => v.vehicleIdentifier?.typeCodeName).filter(Boolean))].slice(0, 3).join(", "), cars, seats, length };
+    return { main, models: units, loco, cars, seats, length: Math.round(length), route, coaches };
   }
 
   // ---------- Formation service ----------

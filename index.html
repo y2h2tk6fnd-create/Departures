@@ -395,6 +395,23 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .trip-kv .sp { margin-left: auto; flex: none; min-width: 28px; height: 26px; padding: 0 5px; display: grid; place-items: center; background: #2d327d; color: #fff; border-radius: 5px; font: 700 14px/1 var(--font-body); }
 .trip-kv .sp.changed { box-shadow: 0 0 0 2px #ffd400; }
 .trains .credit { font-size: 11px; color: var(--muted); }
+/* Composition on the platform */
+.comp { background: var(--bg); border-radius: 10px; padding: 12px; display: grid; gap: 8px; }
+.comp-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; font: 600 11px/1.2 var(--font-body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.comp-head .sp { flex: none; min-width: 28px; height: 26px; padding: 0 5px; display: grid; place-items: center; background: #2d327d; color: #fff; border-radius: 5px; font: 700 14px/1 var(--font-body); letter-spacing: 0; }
+.comp-strip { display: flex; gap: 3px; }
+.coach { flex: 1 1 0; min-width: 0; height: 40px; border-radius: 6px; background: var(--surface); border: 1px solid var(--line); display: grid; place-content: center; justify-items: center; gap: 1px; position: relative; overflow: hidden; }
+.coach b { font: 700 13px/1 var(--font-body); }
+.coach i { font-style: normal; font-size: 10px; line-height: 1; }
+.coach.first, .coach.mixed { box-shadow: inset 0 3px 0 #ffd400; }
+.coach.resto { box-shadow: inset 0 3px 0 #d8232a; }
+.coach.loco { flex-grow: .6; background: var(--muted); border-color: var(--muted); opacity: .5; }
+.coach.closed { opacity: .35; }
+.comp-sectors { display: flex; gap: 3px; margin-top: -2px; }
+.comp-sectors span { flex: 1 1 0; min-width: 0; text-align: center; font: 700 12px/1 var(--font-body); color: var(--muted); padding-top: 5px; border-top: 2px solid var(--line); }
+.comp-where { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 4px 0 0; font-size: 13.5px; }
+.comp-where dt { color: var(--muted); }
+.comp-where dd { margin: 0; font-weight: 600; }
 .trains .credit a { color: inherit; }
 
 .head-actions { display: flex; align-items: baseline; gap: 12px; }
@@ -1010,6 +1027,57 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     const names = [...new Set(r.info.models.map((m) => TT.MODELS[m].name))];
     return names.length ? names.join(" + ") : TT.MODELS[r.info.main].name;
   }
+  // Where the carriages stop on the platform: a strip in sector order, the sectors underneath,
+  // and where to find first class, the restaurant, bikes and the family zone.
+  function compositionBox(t, station, platform) {
+    if (!TT || !TT.hasKey() || !t.trainNo || !t.evu) return null;
+    const r = TT.lookup(t);
+    if (!r || r.state !== "ok" || !r.info.coaches || r.info.coaches.length < 2) return null;
+    let coaches = r.info.coaches.map((c) => ({ ...c, at: c.sectors[station] || [] }));
+    const hasSectors = coaches.some((c) => c.at.length);
+    const firstLetter = (c) => (c.at[0] || "");
+    const known = coaches.filter((c) => c.at.length);
+    if (hasSectors && known.length > 1 && firstLetter(known[0]) > firstLetter(known[known.length - 1])) coaches = coaches.reverse();
+    const box = el("div", "comp");
+    const head = el("div", "comp-head");
+    head.append(el("span", "", hasSectors ? `On the platform at ${station}` : "Composition"));
+    if (platform) { const sp = el("span", "sp", platform); sp.title = "Platform " + platform; head.append(sp); }
+    box.append(head);
+    // the carriages
+    const strip = el("div", "comp-strip");
+    for (const c of coaches) {
+      const k = el("div", "coach" + (c.loco ? " loco" : c.first && !c.second ? " first" : c.first ? " mixed" : "") + (c.restaurant ? " resto" : "") + (c.closed ? " closed" : ""));
+      if (!c.loco) k.append(el("b", "", c.restaurant && !c.first && !c.second ? "R" : c.first && !c.second ? "1" : c.first ? "1|2" : "2"));
+      const icons = [c.restaurant && (c.first || c.second) ? "🍴" : "", c.bike ? "🚲" : "", c.family ? "👪" : "", c.wheelchair ? "♿" : ""].filter(Boolean).join("");
+      if (icons) k.append(el("i", "", icons));
+      k.title = c.loco ? "Locomotive" : [c.first && "1st class", c.second && "2nd class", c.restaurant && "restaurant", c.bike && "bikes", c.family && "family zone", c.wheelchair && "wheelchair spaces", c.closed && "closed"].filter(Boolean).join(", ") + (c.at.length ? " · sector " + c.at.join("/") : "");
+      strip.append(k);
+    }
+    box.append(strip);
+    // the sectors, each as wide as the carriages standing in it
+    if (hasSectors) {
+      const weight = new Map();
+      for (const c of coaches) for (const x of c.at) weight.set(x, (weight.get(x) || 0) + 1 / c.at.length);
+      const row = el("div", "comp-sectors");
+      for (const x of [...weight.keys()].sort()) { const cell = el("span", "", x); cell.style.flexGrow = weight.get(x).toFixed(3); row.append(cell); }
+      box.append(row);
+      // where things are
+      // Sectors as runs of consecutive letters: "B–C, F–G" (a double train has two first-class groups).
+      const where = (pred) => {
+        const xs = [...new Set(coaches.filter(pred).flatMap((c) => c.at))].sort(), runs = [];
+        for (const x of xs) { const last = runs[runs.length - 1]; if (last && x.charCodeAt(0) === last[1].charCodeAt(0) + 1) last[1] = x; else runs.push([x, x]); }
+        return runs.map(([a, b]) => a === b ? a : `${a}–${b}`).join(", ");
+      };
+      const dl = el("dl", "comp-where");
+      for (const [label, pred] of [["1st class", (c) => c.first], ["2nd class", (c) => c.second], ["Restaurant", (c) => c.restaurant], ["Bikes", (c) => c.bike], ["Family zone", (c) => c.family], ["Wheelchair", (c) => c.wheelchair]]) {
+        const w = where(pred);
+        if (w) dl.append(el("dt", "", label), el("dd", "", (/[,–]/.test(w) ? "Sectors " : "Sector ") + w));
+      }
+      if (dl.childElementCount) box.append(dl);
+    }
+    return box;
+  }
+
   function trainInfo(t, forText, inBanner) {
     const box = el("div", "tinfo");
     if (forText) box.append(el("span", "for", forText));
@@ -1420,6 +1488,8 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
       det.append(sum);
       const inside = el("div", "tdet-body");
       inside.append(trainInfo(t, "", false));          // every train shows its own photo, the current one too
+      const comp = compositionBox(t, isLeg ? t.from.name : (j.fromName || (state.from && state.from.name)), isLeg ? t.from.platform : j.platform);
+      if (comp) inside.append(comp);
       // Details of this train on your journey
       const dl = el("dl", "kv trip-kv");
       const add = (a, v) => { if (!v) return; const dd = el("dd"); dd.append(v); dl.append(el("dt", "", a), dd); };
