@@ -434,9 +434,10 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 .hero .progress .bar { background: rgb(255 255 255 / .18); }
 .hero .progress .bar s { background: var(--board); }
 .hero .progress .ends { color: var(--board-muted); }
-.trips { display: grid; gap: 14px; }
-.trip-item { display: grid; gap: 6px; }
-.trip-item + .trip-item { border-top: 1px solid var(--line); padding-top: 14px; }
+.trips { display: grid; gap: 10px; }
+/* Each tracked trip in its own black box, like the countdown card (light text in both themes). */
+.trip-item { display: grid; gap: 6px; background: var(--board); color: var(--board-fg); border-radius: 14px; padding: 12px 14px 10px;
+  --fg: var(--board-fg); --muted: var(--board-muted); --line: rgb(255 255 255 / .16); --surface: var(--board); }
 /* Inside My trips the section itself is the frame: no box around each trip. */
 .trips .card, .trips .card.liv, .trips .card.gone { background: none; border: 0; border-radius: 0; box-shadow: none; padding: 4px 0 0; }
 .trips .card::after { display: none; }
