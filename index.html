@@ -489,6 +489,31 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 /* Transport filter, in the menu */
 .menu-filter { display: grid; gap: 8px; border-top: 1px solid var(--line); padding-top: 12px; }
 .menu-lab { font-weight: 600; font-size: 15.5px; }
+/* ===== motion: graceful state changes (v2-style easing). Remove this block and the "motion:" lines to undo. ===== */
+:root { --ease-m: cubic-bezier(.2, .8, .2, 1); }
+@media (prefers-reduced-motion: no-preference) {
+  .when.swap .big, .when.swap .meta { animation: m-up .5s var(--ease-m) both; }
+  .when.swap .meta { animation-delay: .06s; }
+  .when { overflow: hidden; }
+  .status.swap { animation: m-up .45s var(--ease-m) both; }
+  .hero.swap > *:not(.progress) { animation: m-lift .6s var(--ease-m) both; }
+  .hero.swap > .hline { animation-delay: 0s; } .hero.swap > h2 { animation-delay: .05s; } .hero.swap > .plat { animation-delay: .08s; }
+  .hero.swap > .when { animation-delay: .1s; } .hero.swap > .status { animation-delay: .14s; } .hero.swap > .addtrip { animation-delay: .18s; }
+  .hero.swap > .progress { animation: m-draw .7s var(--ease-m) .12s both; transform-origin: left; }
+  .detail.opening .inner > #d-body > .inner > * { animation: m-lift .6s var(--ease-m) both; animation-delay: calc(var(--mi, 0) * 70ms); }
+  .detail.opening .banner { animation: m-fade .5s var(--ease-m) both; }
+  .card.m-in { animation: m-lift .55s var(--ease-m) both; animation-delay: calc(min(var(--mi, 0), 12) * 45ms); }
+  .card.m-settle { animation: m-settle .8s var(--ease-m) both; }
+  .menu.m-open > * { animation: m-lift .5s var(--ease-m) both; animation-delay: calc(var(--mi, 0) * 50ms); }
+  .stops.m-draw > li { animation: m-lift .45s var(--ease-m) both; animation-delay: calc(min(var(--mi, 0), 24) * 22ms); }
+  .progress .bar i { transition: width .8s var(--ease-m); }
+}
+@keyframes m-up { from { transform: translateY(70%); opacity: 0; } }
+@keyframes m-lift { from { transform: translateY(10px); opacity: 0; } }
+@keyframes m-fade { from { opacity: 0; } }
+@keyframes m-draw { from { transform: scaleX(0); opacity: 0; } }
+@keyframes m-settle { from { opacity: 1; } 40% { transform: translateY(-2px); } }
+/* ===== end motion ===== */
 </style>
 </head>
 <body>
@@ -907,6 +932,10 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
       label = `departs ${hhmm(j.planned)}`;
     }
     if (chip) { meta.append(delayEl(j.delay)); label += `, ${j.delay} minutes late`; }
+    // motion: when the state changes (not every second), the new state slides in
+    const stKey = big.classList.contains("gone") ? "gone" : meta.querySelector(".dl") ? "delayed" : big.classList.contains("countdown") || big.classList.contains("now") ? "count" : "time";
+    if (cell.dataset.st && cell.dataset.st !== stKey) { cell.classList.remove("swap"); void cell.offsetWidth; cell.classList.add("swap"); cell.dataset.prev = ""; }
+    cell.dataset.st = stKey;
     rollDigits(big, cell.dataset.prev || "");
     cell.dataset.prev = big.textContent;
     cell.append(big, meta);
@@ -980,6 +1009,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     return r;
   }
 
+  let revealNext = true; const justGone = new Set();                  // motion
   function renderList() {
     // Remember what's at the top of the view, so a refresh doesn't make the list jump.
     let anchor = null;
@@ -989,6 +1019,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
       }
     }
     list.replaceChildren(); timeCells.length = 0;
+    let mIdx = 0;                                                     // motion
     const trip = isTrip();
     $("station-name").textContent = state.from ? state.from.name + (trip ? " → " + state.to.name : "") + (state.when ? ` · ${dayShort(state.when)} from ${hhmm(state.when)}` : "") : "–";
     if (state.error) list.append(el("div", "error", state.error));
@@ -1001,13 +1032,14 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
       }
       return;
     }
-    for (const j of gone) list.append(card(j));
+    for (const j of gone) { const c = card(j); if (justGone.has(j.key)) { c.classList.add("m-settle"); justGone.delete(j.key); } list.append(c); }   // motion: settle
     if (gone.length) {
       const nl = el("div", "now-line");
       nl.append(el("span", "", "Now · scroll up for departed"));
       list.append(nl);
     }
-    for (const j of next) list.append(card(j));
+    const mReveal = revealNext && !state.loading && next.length > 0; if (mReveal) revealNext = false;   // motion
+    for (const j of next) { const c = card(j); if (mReveal) { c.classList.add("m-in"); c.style.setProperty("--mi", mIdx++); } list.append(c); }
     if (!next.length && !state.error) list.append(el("div", "empty", "No more departures loaded."));
     const lastT = next.length ? next[next.length - 1].planned : null;
     if (lastT != null && lastT < now() + 8 * 86400) {
@@ -1136,7 +1168,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
   }
 
   // ---------- Detail page ----------
-  let detailSnap = null, lastFocus = null;
+  let detailSnap = null, lastFocus = null, lastHero = null, stopsSwapAt = 0;   // motion: lastHero, stopsSwapAt
   const detailCells = [];
   function openDetail(key, from) {
     const j = findRow(key);
@@ -1145,6 +1177,9 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     verifyLegs(j);
     if (!(history.state && history.state.detail)) history.pushState({ detail: 1 }, "", "#train");
     $("detail").hidden = false; document.body.classList.add("locked");
+    lastHero = null;                                                  // motion
+    $("detail").classList.remove("opening"); void $("detail").offsetWidth; $("detail").classList.add("opening");
+    setTimeout(() => $("detail").classList.remove("opening"), 1400);
     renderDetail();
     $("detail").scrollTop = 0;
     $("d-back").focus({ preventScroll: true });
@@ -1268,7 +1303,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     b.setAttribute("role", "switch");
     b.append(el("span", "", "All stops"), el("span", "sw"));
     b.hidden = true;
-    b.addEventListener("click", () => { allStops = !allStops; refreshRoutes(); });
+    b.addEventListener("click", () => { allStops = !allStops; stopsSwapAt = Date.now(); refreshRoutes(); });   // motion: stopsSwapAt
     const t = el("div", "sh-text");
     t.append(el("h3", "sh-title", title));
     if (sub) t.append(sub);
@@ -1363,6 +1398,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
         ul.append(li);
         if (pos.kind === "between" && i === pos.i && !(folds && i === hi)) { const pr = posRow(pos.next); if (a >= 0 && b >= 0 && i >= a && i < b) pr.classList.add("ju", "jl"); ul.append(pr); }
       });
+      if (Date.now() - stopsSwapAt < 300) { ul.classList.add("m-draw"); [...ul.children].forEach((li, i) => li.style.setProperty("--mi", i)); }   // motion
       box.append(ul);
       const notes = [];
       if (r.loading) notes.push("Loading the whole line…");
@@ -1400,6 +1436,9 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 
     // Hero: line, destination, the big time and the platform.
     const hero = el("div", "hero" + (cur.livery ? " liv liv-" + cur.livery : ""));
+    const heroKey = j.key + "|" + (isSaved(j.key) ? phaseKey(j) : "") + "|" + (isGone(j) ? "g" : "");      // motion
+    if (lastHero && lastHero.key === j.key && lastHero.state !== heroKey) hero.classList.add("swap");
+    lastHero = { key: j.key, state: heroKey };
     const hl = el("div", "hline"); hl.append(badge(cur));
     if (opLabel(cur)) hl.append(el("span", "op", opLabel(cur)));
     const h2 = el("h2"); h2.id = "d-title";
@@ -1409,12 +1448,14 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     const w = el("div", "when"); fillWhen(w, j); detailCells.push([w, j]);
     const st = el("div", "status");
     function status() {
+      const before = st.textContent;                                  // motion: remember to animate a change
       st.replaceChildren();
       if (isGone(j)) { st.className = "status"; st.append(`Left ${hhmm(when(j))}` + (j.delay > 0 ? `, ${j.delay} min late` : "")); }
       else if (j.delay > 0) { st.className = "status bad"; st.append(`Running ${j.delay} min late · expected ${hhmm(when(j))}`); }
       else { st.className = "status good"; st.append("On time"); }
       if (j.platformChanged) st.append(` · platform changed to ${j.platform}`);
       if (j.dur) st.append(` · journey ${j.dur}`);
+      if (before && before !== st.textContent) { st.classList.add("swap"); setTimeout(() => st.classList.remove("swap"), 500); }   // motion
     }
     status(); detailCells.push([null, j, status]);
     let p = platBox(j);
@@ -1539,6 +1580,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     });
     inner.append(ts);
 
+    [...inner.children].forEach((x, i) => x.style.setProperty("--mi", i));   // motion: stagger order on opening
     body.append(inner);
     syncAllStops();
   }
@@ -1563,7 +1605,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
       if (isGone(c[1]) !== c[3]) moved = true;
       c[2].setAttribute("aria-label", c[4]());
     }
-    if (moved) renderList();
+    if (moved) { for (const c of timeCells) if (isGone(c[1]) && !c[3]) justGone.add(c[1].key); renderList(); }   // motion: justGone
     let phaseMoved = false;
     for (const c of menuCells) {
       if (c[5]) c[5](c[0], c[1]); else if (!menu.hidden) fillWhen(c[0], c[1]);
@@ -1625,7 +1667,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
   }
   function newSearch() {
     state.journeys = []; state.past = new Map(); state.pastAt = 0; state.error = null; state.extra = new Map();
-    state.limit = isTrip() ? 6 : 30; pinNow = true;
+    state.limit = isTrip() ? 6 : 30; pinNow = true; revealNext = true;   // motion: revealNext
     save(); loadBoard();
   }
   // ---------- Date and time ----------
@@ -2001,6 +2043,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
   const menuBtn = $("menu-btn"), menu = $("menu");
   menuBtn.addEventListener("click", () => {
     menu.hidden = !menu.hidden; menuBtn.setAttribute("aria-expanded", String(!menu.hidden));
+    if (!menu.hidden) { [...menu.children].forEach((x, i) => x.style.setProperty("--mi", i)); menu.classList.remove("m-open"); void menu.offsetWidth; menu.classList.add("m-open"); setTimeout(() => menu.classList.remove("m-open"), 900); }   // motion
     if (!menu.hidden) { renderTrips(); refreshTrips(); }
     else closeSettings();
   });
