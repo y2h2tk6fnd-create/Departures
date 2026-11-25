@@ -1,0 +1,2058 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#090909">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Departures">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="../icon-180.png">
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="../favicon-32.png">
+<link rel="manifest" href="manifest.json">
+<title>Departure Board</title>
+<style>
+/* Swiss dark, sharp motion: near-black, strict grid, hairlines, one accent (Swiss red), no shadows,
+   gradients, rounded cards or emoji. Helvetica Neue for text, a monospaced face for numbers. */
+:root {
+  --bg: #090909; --fg: #F2F2F2; --muted: #8F8F8F; --faint: #4D4D4D; --rule: #292929; --accent: #F0382A;
+  --surface: #090909; --line: #292929; --board: #090909; --board-fg: #F2F2F2; --board-muted: #8F8F8F;
+  --accent-fg: #090909; --late: #F0382A; --late-bg: transparent; --ok: #F2F2F2; --warn-bg: #F0382A; --warn-fg: #F2F2F2;
+  --trip: #F0382A; --trip-ink: #090909;
+  --sans: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+  --mono: ui-monospace, "SF Mono", "SFMono-Regular", Menlo, "Roboto Mono", monospace;
+  --font-display: var(--sans); --font-body: var(--sans); --font-mono: var(--mono);
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --label: 120px;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--fg); font: 15px/1.45 var(--sans); -webkit-font-smoothing: antialiased;
+  height: 100vh; height: 100dvh; overflow-y: auto; display: flex; flex-direction: column;
+  padding: max(10px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px));
+}
+body.locked { overflow: hidden; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; background: none; border: 0; padding: 0; }
+:focus-visible { outline: 1px solid var(--accent); outline-offset: 3px; }
+a { color: inherit; }
+
+/* Background grid: 12 faint columns; on a pointer device the column under the cursor brightens and a hairline follows it. */
+.bg-grid { position: fixed; inset: 0; pointer-events: none; z-index: 0; display: grid; grid-template-columns: repeat(12, 1fr); gap: 0 16px;
+  padding: 0 max(16px, calc((100vw - 680px) / 2)); }
+.bg-grid i { background: rgb(255 255 255 / .03); transition: background-color .3s var(--ease); }
+.bg-grid i.hot { background: rgb(255 255 255 / .055); }
+.bg-cursor { position: fixed; top: 0; bottom: 0; width: 1px; background: rgb(255 255 255 / .12); pointer-events: none; z-index: 0; left: -10px; }
+.bg-readout { position: fixed; right: 12px; bottom: 10px; font: 10px/1 var(--mono); color: var(--faint); pointer-events: none; z-index: 0; letter-spacing: .04em; }
+@media not (pointer: fine) { .bg-cursor, .bg-readout { display: none; } }
+
+.wrap { position: relative; z-index: 1; width: 100%; max-width: 680px; margin: 0 auto; flex: 1 0 auto; display: flex; flex-direction: column; min-height: 0; }
+
+/* Top bar */
+.topbar { display: grid; grid-template-columns: var(--label) 1fr auto; align-items: baseline; gap: 0 16px; padding: 8px 0 10px; }
+.topbar .app { font: 700 13px/1 var(--sans); letter-spacing: -.01em; }
+.topbar .sub { font-size: 11px; color: var(--muted); }
+.topbar .right { display: flex; align-items: center; gap: 14px; }
+.topbar .clock { font: 12px/1 var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--fg); display: inline-block; }
+.dot.busy { animation: blink 1s steps(2, start) infinite; }
+.dot.err { background: var(--accent); }
+@keyframes blink { to { opacity: .25; } }
+.menu-btn { position: relative; font: 600 12px/1 var(--sans); padding: 4px 0; }
+.menu-btn .bars { display: none; }
+.menu-btn::before { content: "Menu"; }
+.menu-btn .count { position: static; display: inline-block; margin-left: 6px; font: 600 11px/1 var(--mono); color: var(--accent); background: none; min-width: 0; height: auto; padding: 0; }
+.menu-btn.alert::before { color: var(--accent); }
+
+/* Hairline rules that draw in from the left */
+.rule { height: 1px; background: var(--rule); transform-origin: left; }
+@media (prefers-reduced-motion: no-preference) {
+  .rule { animation: draw .7s var(--ease) both; animation-delay: calc(var(--i, 0) * 70ms); }
+  .sec, .head { animation: lift .6s var(--ease) both; animation-delay: calc(120ms + var(--i, 0) * 70ms); }
+}
+@keyframes draw { from { transform: scaleX(0); } }
+@keyframes lift { from { opacity: 0; transform: translateY(10px); } }
+
+/* Headline: the app's state in one word; changes slide up out of a clipped mask. */
+.head { padding: 14px 0 8px; display: grid; grid-template-columns: var(--label) 1fr; gap: 0 16px; }
+.headline { grid-column: 2; position: relative; overflow: hidden; height: 50px; font: 700 46px/50px var(--sans); letter-spacing: -.045em; margin: 0; }
+.headline span { display: block; }
+@media (prefers-reduced-motion: no-preference) {
+  .headline span.in { animation: hin .45s var(--ease) both; }
+  .headline span.out { position: absolute; left: 0; top: 0; animation: hout .45s var(--ease) both; }
+}
+@keyframes hin { from { transform: translateY(100%); } }
+@keyframes hout { to { transform: translateY(-100%); } }
+.strip { grid-column: 2; height: 18px; overflow: hidden; font: 11px/18px var(--mono); color: var(--muted); }
+.strip .msg { color: var(--fg); }
+.strip .err { color: var(--accent); }
+
+/* Sections: a red monospaced number and a short label in a fixed left column, content on the right. */
+.sec { display: grid; grid-template-columns: var(--label) minmax(0, 1fr); gap: 0 16px; padding: 14px 0; }
+.sec > .lab { font: 11px/1.3 var(--mono); color: var(--muted); }
+.sec > .lab b, .lab b { color: var(--accent); font-weight: 400; margin-right: 10px; }
+@media (max-width: 560px) {
+  :root { --label: 0px; }
+  .sec, .head, .topbar { grid-template-columns: 1fr; }
+  .topbar { grid-template-columns: auto 1fr auto; }
+  .topbar .sub { padding-left: 10px; }
+  .headline, .strip { grid-column: 1; }
+  .sec > .lab { margin-bottom: 10px; }
+}
+
+/* Route: underline-only fields; the hairline draws in red from the left on focus. */
+.trip { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 14px; align-items: end; }
+.fields { display: grid; gap: 6px; min-width: 0; }
+.field { position: relative; display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 10px; }
+.field::before { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: var(--faint); }
+.field::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: var(--accent); transform: scaleX(0); transform-origin: left; transition: transform .45s var(--ease); }
+.field:focus-within::after { transform: scaleX(1); }
+.field .dot { display: none; }
+.field .tag { font: 10px/1 var(--mono); color: var(--muted); text-transform: lowercase; }
+.field input { border: 0; background: none; outline: none; font: 500 17px/1 var(--sans); letter-spacing: -.01em; padding: 10px 0; min-width: 0; }
+.field input::placeholder { color: var(--faint); }
+.field .clear { font: 14px/1 var(--mono); color: var(--muted); padding: 4px; }
+.swap { font: 15px/1 var(--mono); color: var(--muted); padding: 8px 0 12px; }
+.swap:disabled { color: var(--faint); cursor: default; }
+.suggest { position: absolute; z-index: 20; left: 0; right: 0; top: calc(100% + 1px); background: var(--bg); border: 1px solid var(--rule); list-style: none; margin: 0; padding: 0; }
+.suggest .head { display: block; padding: 8px 12px 4px; font: 10px/1 var(--mono); color: var(--muted); animation: none; }
+.suggest li[role="option"] { padding: 10px 12px; display: flex; justify-content: space-between; gap: 12px; cursor: pointer; border-top: 1px solid var(--rule); }
+.suggest li .kind { font: 10px/1.6 var(--mono); color: var(--muted); }
+.suggest li .kind.train { color: var(--fg); }
+.suggest li[aria-selected="true"], .suggest li[role="option"]:hover { color: var(--accent); }
+
+/* When */
+.whenrow { display: flex; align-items: baseline; gap: 14px; }
+.whenchip { position: relative; cursor: pointer; font: 500 17px/1.2 var(--sans); padding-bottom: 4px; }
+.whenchip::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: var(--faint); }
+.whenchip.set::after { background: var(--accent); }
+.whenchip input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 16px; }
+.whenchip::before { display: none; }
+.whenclear { font: 13px/1 var(--mono); color: var(--muted); }
+
+/* Modes: large words, a red underline under each chosen one */
+.chips { display: flex; flex-wrap: wrap; gap: 4px 20px; }
+.chip { position: relative; font: 600 20px/1.3 var(--sans); letter-spacing: -.02em; color: var(--faint); padding: 2px 0 6px; transition: color .3s var(--ease); }
+.chip::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--accent); transform: scaleX(0); transform-origin: left; transition: transform .4s var(--ease); }
+.chip[aria-pressed="true"] { color: var(--fg); }
+.chip[aria-pressed="true"]::after { transform: scaleX(1); }
+.chip:hover { color: var(--muted); }
+.chip[aria-pressed="true"]:hover { color: var(--fg); }
+
+/* Board: rows on hairlines, no cards */
+.board { flex: 1 1 0; min-height: 360px; display: flex; flex-direction: column; overflow: hidden; }
+.board-head { display: none !important; }
+.list-wrap { position: relative; flex: 1 1 0; min-height: 0; display: flex; }
+.list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; position: relative; display: flex; flex-direction: column; padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
+.card { position: relative; flex: none; cursor: pointer; display: grid; grid-template-columns: minmax(0, 1fr) 48px; grid-template-areas: "head plat" "when plat" "trip plat"; gap: 4px 14px; align-items: center;
+  padding: 12px 0; border-bottom: 1px solid var(--rule); }
+.card::after { display: none; }
+.card:hover .dest { color: var(--accent); }
+.card .head { grid-area: head; display: flex; align-items: baseline; gap: 12px; min-width: 0; padding: 0; animation: none; }
+.card .dest { font: 600 16px/1.25 var(--sans); letter-spacing: -.01em; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color .2s var(--ease); }
+.card .when { grid-area: when; }
+.card .tripinfo { grid-area: trip; font: 12px/1.4 var(--mono); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card .tripinfo b { color: var(--fg); font-weight: 400; }
+.card .tripinfo.wrap { white-space: normal; }
+.card .plat { grid-area: plat; }
+.card.gone { opacity: .45; }
+.badge { flex: none; font: 600 12px/1 var(--mono); letter-spacing: 0; color: var(--fg); padding: 0; border: 0; background: none; white-space: nowrap; }
+.badge.long { color: var(--fg); }
+.when { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 12px; min-width: 0; }
+.big { font: 300 30px/1 var(--mono); font-variant-numeric: tabular-nums; letter-spacing: -.04em; }
+.big.countdown, .big.now { color: var(--fg); }
+.big.gone { font: 500 15px/1.4 var(--sans); color: var(--muted); letter-spacing: 0; }
+.big .ch { display: inline-block; }
+@media (prefers-reduced-motion: no-preference) { .big .ch.roll { animation: roll .35s var(--ease) both; } }
+@keyframes roll { from { transform: translateY(-55%); opacity: 0; } }
+.meta { font: 12px/1.4 var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.delay { font: 12px/1 var(--mono); color: var(--accent); margin-left: 6px; background: none; padding: 0; }
+.meta .delay.dl { margin-left: 0; }
+.plat { justify-self: end; display: grid; place-items: center; min-width: 42px; height: 42px; padding: 0 3px; border: 1px solid var(--faint); color: var(--fg); position: relative; }
+.plat b { font: 400 20px/1 var(--mono); }
+.plat b.long { font-size: 13px; }
+.plat.changed { border-color: var(--accent); color: var(--accent); }
+.plat.changed::after { display: none; }
+.plat.unknown { border-style: dashed; color: var(--faint); }
+.plat .cap { position: absolute; top: -14px; right: 0; font: 9px/1 var(--mono); color: var(--muted); text-transform: lowercase; white-space: nowrap; }
+.now-line { display: flex; align-items: center; gap: 10px; color: var(--accent); font: 10px/1 var(--mono); padding: 12px 0; flex: none; text-transform: lowercase; }
+.now-line::after { content: ""; flex: 1; height: 1px; background: var(--accent); }
+.more { position: relative; align-self: flex-start; margin: 14px 0; font: 500 13px/1.6 var(--sans); color: var(--fg); }
+.empty, .error { padding: 26px 0; color: var(--muted); font-size: 14px; }
+.error { color: var(--accent); }
+.empty .fix { margin-top: 12px; font-weight: 600; color: var(--fg); }
+
+/* Text buttons: an underline draws in on hover */
+.more::after, .back::after, .allstops::after, .trip-meta button::after, .menu-row::after, .empty .fix::after, .settings button.secondary::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: currentColor; transform: scaleX(0); transform-origin: left; transition: transform .35s var(--ease); }
+.more:hover::after, .back:hover::after, .allstops:hover::after, .trip-meta button:hover::after, .menu-row:hover::after, .empty .fix:hover::after, .settings button.secondary:hover::after { transform: scaleX(1); }
+.empty .fix, .back, .allstops, .trip-meta button, .menu-row { position: relative; }
+
+/* Menu and settings */
+.menu, .settings { position: relative; z-index: 2; padding: 14px 0; border-bottom: 1px solid var(--rule); display: grid; gap: 12px; }
+.menu h2, .settings h2 { margin: 0; font: 700 20px/1.1 var(--sans); letter-spacing: -.02em; }
+.menu h2::before { content: "00"; font: 400 11px/1 var(--mono); color: var(--accent); margin-right: 10px; vertical-align: 4px; }
+.trips { display: grid; }
+.trip-item { display: grid; gap: 4px; border-bottom: 1px solid var(--rule); padding-bottom: 8px; }
+.trips .card { border-bottom: 0; }
+.trip-meta { display: flex; justify-content: space-between; gap: 10px; font: 11px/1.4 var(--mono); color: var(--muted); }
+.trip-meta button { font: 11px/1.4 var(--mono); color: var(--muted); }
+.menu .none { margin: 0; color: var(--muted); font-size: 14px; }
+.menu-row { justify-self: start; display: flex; gap: 14px; font: 600 14px/1.6 var(--sans); }
+.menu-row span { font: 11px/1.9 var(--mono); color: var(--muted); }
+.menu-row.alert span { color: var(--accent); }
+.settings p, .settings ol { margin: 0; color: var(--muted); font-size: 13px; max-width: 60ch; }
+.settings ol { padding-left: 18px; display: grid; gap: 4px; }
+.settings .row { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+.settings input { flex: 1 1 220px; min-width: 0; border: 0; border-bottom: 1px solid var(--faint); background: none; padding: 8px 0; font: 13px var(--mono); outline: none; }
+.settings input:focus { border-bottom-color: var(--accent); }
+.settings button { position: relative; font: 600 13px/1 var(--sans); }
+.settings .status { font: 11px/1.4 var(--mono); color: var(--muted); }
+.settings .status.bad { color: var(--accent); }
+.settings .about { font-size: 12px; }
+.toast { display: none !important; }
+
+/* Primary button: a solid red rectangle; a white fill sweeps in from the left on hover and the arrow nudges right. */
+.addtrip { grid-area: add; justify-self: start; position: relative; overflow: hidden; display: inline-flex; align-items: center; gap: 10px; margin-top: 8px;
+  background: var(--accent); color: var(--fg); font: 600 13px/1 var(--sans); padding: 12px 16px; letter-spacing: 0; border: 0; border-radius: 0; }
+.addtrip::before { content: ""; position: absolute; inset: 0; background: var(--fg); transform: scaleX(0); transform-origin: left; transition: transform .45s var(--ease); }
+.addtrip > * { position: relative; }
+.addtrip .arr { transition: transform .45s var(--ease); font-family: var(--mono); }
+.addtrip:hover::before { transform: scaleX(1); }
+.addtrip:hover { color: var(--bg); }
+.addtrip:hover .arr { transform: translateX(4px); }
+.addtrip { transition: color .3s var(--ease); }
+.addtrip.on { background: none; color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.addtrip.on::before { background: var(--accent); }
+.addtrip.on:hover { color: var(--fg); }
+
+/* Train page */
+.detail { position: fixed; inset: 0; z-index: 30; background: var(--bg); overflow-y: auto; overscroll-behavior: contain;
+  padding: max(10px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(28px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.detail .inner { position: relative; z-index: 1; max-width: 680px; margin: 0 auto; display: grid; }
+.dbar { display: grid; grid-template-columns: var(--label) 1fr; gap: 0 16px; align-items: baseline; padding: 8px 0 4px; }
+.back { justify-self: start; font: 600 12px/1.6 var(--sans); color: var(--fg); }
+.back::before { content: "← "; font-family: var(--mono); }
+.dhead { grid-column: 2; }
+@media (max-width: 560px) { .dbar { grid-template-columns: 1fr; } .dhead { grid-column: 1; } }
+.banner { position: relative; z-index: 1; width: 100%; max-width: 680px; margin: 6px auto 0; aspect-ratio: 2 / 1; background: var(--rule); }
+.banner::before { content: ""; position: absolute; inset: 0; background: var(--photo) center 60% / cover no-repeat; filter: saturate(.9); }
+.banner::after { display: none; }
+.detail.has-banner #d-body { margin-top: 0; }
+.detail .inner > #d-body > .inner { display: grid; padding: 0 !important; }
+
+/* Each block of the train page is a numbered section */
+.hero, .sect { position: relative; display: grid; padding: 16px 0 16px calc(var(--label) + 16px); border-top: 1px solid var(--rule); min-width: 0; }
+.blk-lab { position: absolute; left: 0; top: 18px; width: var(--label); font: 11px/1.3 var(--mono); color: var(--muted); }
+.trains > h3 { display: none; }
+@media (max-width: 560px) {
+  .hero, .sect { padding-left: 0; padding-top: 34px; }
+  .blk-lab { top: 12px; }
+}
+.hero { grid-template-columns: minmax(0, 1fr) 64px; grid-template-areas: "line plat" "dest plat" "when when" "status status" "prog prog" "add add"; gap: 8px 16px; background: none; color: var(--fg); }
+.hero::before { content: ""; position: absolute; left: 0; right: 0; top: -1px; height: 2px; background: var(--accent); transform: scaleX(0); transform-origin: left; }
+@media (prefers-reduced-motion: no-preference) { .hero.departing::before { animation: depline 1.6s var(--ease) both; } }
+@keyframes depline { 0% { transform: scaleX(0); } 60% { transform: scaleX(1); opacity: 1; } 100% { transform: scaleX(1); opacity: 0; } }
+.hero .hline { grid-area: line; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.hero .badge { font-size: 13px; }
+.hero .op { font: 11px/1.4 var(--mono); color: var(--muted); }
+.hero h2 { grid-area: dest; margin: 0; font: 700 26px/1.1 var(--sans); letter-spacing: -.03em; overflow-wrap: anywhere; }
+.hero h2 small { display: block; margin-top: 4px; font: 12px/1.4 var(--mono); color: var(--muted); letter-spacing: 0; }
+.hero .when { grid-area: when; margin-top: 6px; }
+.hero .big, .hero .big.countdown, .hero .big.now { font: 200 56px/1 var(--mono); letter-spacing: -.05em; color: var(--fg); }
+.hero .big.gone { font: 500 20px/1.3 var(--sans); color: var(--muted); }
+.hero .meta { font-size: 13px; }
+.hero .plat { grid-area: plat; align-self: start; width: 64px; height: 64px; }
+.hero .plat b { font-size: 30px; }
+.hero .plat.withcap { display: grid; }
+.hero .status { grid-area: status; font: 12px/1.5 var(--mono); color: var(--muted); }
+.hero .status.bad, .hero .status.good { color: var(--fg); }
+.progress { grid-area: prog; display: grid; grid-template-columns: auto 1fr; grid-template-areas: "pct bar" "ends ends"; gap: 6px 14px; align-items: center; margin-top: 6px; }
+.progress .pct { grid-area: pct; font: 200 30px/1 var(--mono); letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+.progress .pct small { font-size: 13px; color: var(--muted); }
+.progress .bar { grid-area: bar; position: relative; height: 2px; background: var(--rule); overflow: visible; border-radius: 0; }
+.progress .bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); box-shadow: none; border-radius: 0; transition: width .8s var(--ease); }
+.progress .bar s { position: absolute; top: -4px; width: 1px; height: 10px; margin-left: 0; background: var(--muted); }
+.progress .ends { grid-area: ends; display: flex; justify-content: space-between; font: 10px/1.3 var(--mono); color: var(--muted); }
+.sect { gap: 12px; background: none; border-radius: 0; border-left: 0; border-right: 0; border-bottom: 0; }
+.sect h3 { margin: 0; font: 10px/1 var(--mono); color: var(--muted); text-transform: lowercase; letter-spacing: 0; }
+.sect .note, .stops-key { margin: 0; font: 11px/1.4 var(--mono); color: var(--muted); }
+.sect-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--rule); }
+.sh-text { min-width: 0; display: grid; gap: 4px; }
+.sect h3.sh-title { font: 700 26px/1.05 var(--sans); letter-spacing: -.03em; color: var(--fg); text-transform: none; }
+.sh-sub { font: 12px/1.4 var(--mono); color: var(--muted); }
+.sh-sub b { color: var(--fg); font-weight: 400; }
+.allstops { flex: none; display: inline-flex; align-items: center; gap: 8px; font: 11px/1.6 var(--mono); color: var(--muted); margin-top: 6px; }
+.allstops .sw { position: relative; width: 26px; height: 12px; border: 1px solid var(--faint); border-radius: 0; background: none; }
+.allstops .sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 6px; height: 6px; background: var(--muted); transition: transform .3s var(--ease), background-color .3s; border-radius: 0; box-shadow: none; }
+.allstops[aria-checked="true"] { color: var(--fg); }
+.allstops[aria-checked="true"] .sw { border-color: var(--accent); background: none; }
+.allstops[aria-checked="true"] .sw::after { transform: translateX(14px); background: var(--accent); }
+
+/* Stop lists: a hairline line, small square-ish marks, monospaced times */
+.stops { list-style: none; margin: 0; padding: 0; }
+.stops li { position: relative; display: grid; grid-template-columns: 20px minmax(0, 1fr) auto 34px; gap: 0 12px; align-items: center; padding: 8px 0; min-height: 52px; }
+.stops li::before, .stops li::after { content: ""; position: absolute; left: 9px; width: 1px; background: var(--faint); }
+.stops li::before { top: -1px; height: calc(50% + 1px); }
+.stops li::after { top: 50%; bottom: -1px; }
+.stops li:first-child::before, .stops li:last-child::after { display: none; }
+.stops li.past::before, .stops li.past::after, .stops li.pos::before, .stops li.here::before { background: var(--muted); }
+.stops li.ju::before, .stops li.jl::after { left: 9px; width: 1px; background: var(--fg); border: 0; }
+.stops li.past.ju::before, .stops li.past.jl::after, .stops li.pos.ju::before, .stops li.here.ju::before { background: var(--muted); }
+.stops.green li.ju::before, .stops.green li.jl::after { left: 8px; width: 3px; background: var(--accent); box-shadow: none; }
+.stops.green li.past.ju::before, .stops.green li.past.jl::after, .stops.green li.pos.ju::before, .stops.green li.here.ju::before { left: 9px; width: 1px; background: var(--muted); }
+.stops .pt { position: relative; z-index: 1; justify-self: center; width: 7px; height: 7px; background: var(--bg); border: 1px solid var(--muted); border-radius: 0; }
+.stops li.end .pt, .stops li .pt.term { width: 15px; height: 3px; border: 0; background: var(--fg); border-radius: 0; }
+.stops li.mine .pt:not(.term) { width: 11px; height: 11px; border: 2px solid var(--fg); }
+.stops li.past .pt { background: var(--muted); border-color: var(--muted); }
+.stops .tr { position: relative; z-index: 2; justify-self: center; width: 13px; height: 13px; border-radius: 50%; background: var(--accent); border: 0; box-shadow: none; }
+@media (prefers-reduced-motion: no-preference) { .stops .tr { animation: ping 1.4s var(--ease) infinite; } }
+@keyframes ping { 0% { box-shadow: 0 0 0 0 rgb(240 56 42 / .55); } 100% { box-shadow: 0 0 0 10px rgb(240 56 42 / 0); } }
+.stops .st { min-width: 0; display: grid; gap: 2px; }
+.stops .n { font: 500 15px/1.25 var(--sans); overflow-wrap: break-word; }
+.stops li.mine .n, .stops li.end .n { font-weight: 700; }
+.stops li.past .n, .stops li.out .n, .stops li.out .tm b { color: var(--muted); }
+.stops li.out .sp { opacity: .45; }
+.stops li.here .n small { display: block; font: 11px/1.3 var(--mono); color: var(--accent); }
+.stops .tm { display: grid; gap: 3px; justify-items: end; white-space: nowrap; }
+.stops .tm > span { display: grid; grid-template-columns: 30px 22px auto; align-items: center; gap: 6px; font: 10px/1 var(--mono); color: var(--muted); }
+.stops .tm .delay { grid-column: 1; justify-self: end; margin: 0; font-size: 11px; }
+.stops .tm .lbl { grid-column: 2; font-style: normal; text-align: right; }
+.stops .tm b { grid-column: 3; color: var(--fg); font: 400 14px/1.15 var(--mono); font-variant-numeric: tabular-nums; min-width: 40px; text-align: right; }
+.stops li.past .tm b { color: var(--muted); }
+.stops .sp { justify-self: end; min-width: 28px; height: 24px; padding: 0 4px; display: grid; place-items: center; border: 1px solid var(--faint); color: var(--fg); background: none; border-radius: 0; font: 13px/1 var(--mono); }
+.stops .sp.changed { border-color: var(--accent); color: var(--accent); box-shadow: none; }
+.stops li.pos { min-height: 32px; padding: 2px 0; }
+.stops li.pos .ptext { grid-column: 2 / 5; font: 600 13px/1.4 var(--sans); }
+.stops li.pos .ptext span { font: 11px/1.4 var(--mono); color: var(--muted); font-weight: 400; }
+.stops li.pos.ahead::before { display: none; }
+.legh { display: flex; align-items: baseline; gap: 12px; font: 600 15px/1.3 var(--sans); }
+.legh .badge { font-size: 12px; }
+.change { padding: 10px 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); font: 12px/1.5 var(--mono); color: var(--muted); background: none; border-radius: 0; }
+.change b { color: var(--fg); font-weight: 400; }
+.spark { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: center; font: 10px/1.3 var(--mono); color: var(--muted); }
+.spark svg { width: 100%; height: 22px; display: block; overflow: visible; }
+
+/* Trains list */
+.trains .tdet { border-top: 1px solid var(--rule); }
+.trains .tdet:first-of-type { border-top: 0; }
+.trains summary { list-style: none; cursor: pointer; display: flex; align-items: baseline; gap: 12px; padding: 12px 0; }
+.trains summary::-webkit-details-marker { display: none; }
+.trains summary::after { content: "+"; margin-left: auto; font: 14px/1 var(--mono); color: var(--muted); transition: transform .3s var(--ease); }
+.trains details[open] > summary::after { content: "–"; }
+.trains summary > * { min-width: 0; }
+.trains .tsum { display: flex; align-items: baseline; gap: 12px; min-width: 0; flex: 1 1 auto; font: 600 15px/1.3 var(--sans); }
+.trains .tsum-to { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trains .tsum-model { font: 11px/1.4 var(--mono); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40%; }
+.trains .tdet-body { display: grid; gap: 16px; padding: 0 0 16px; }
+.tinfo { display: grid; gap: 4px; }
+.tinfo img { width: 100%; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 0; background: var(--rule); display: block; margin-bottom: 8px; }
+.tinfo .tname { font: 700 22px/1.1 var(--sans); letter-spacing: -.02em; }
+.tinfo .tdetail { font: 12px/1.4 var(--mono); color: var(--muted); }
+.tinfo .note { font: 12px/1.4 var(--mono); color: var(--muted); }
+.facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin: 10px 0 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+.facts div { padding: 10px 12px 10px 0; background: none; border-radius: 0; }
+.facts div + div { padding-left: 12px; border-left: 1px solid var(--rule); }
+.facts dt { font: 10px/1.2 var(--mono); color: var(--muted); text-transform: lowercase; letter-spacing: 0; }
+.facts dd { margin: 4px 0 0; font: 300 24px/1 var(--mono); letter-spacing: -.03em; }
+.comp { display: grid; gap: 8px; padding: 12px 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); background: none; border-radius: 0; }
+.comp-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; font: 10px/1.2 var(--mono); color: var(--muted); text-transform: lowercase; letter-spacing: 0; }
+.comp-head .sp { min-width: 26px; height: 22px; display: grid; place-items: center; border: 1px solid var(--faint); font: 12px/1 var(--mono); color: var(--fg); background: none; border-radius: 0; }
+.comp-strip { display: flex; gap: 2px; }
+.coach { flex: 1 1 0; min-width: 0; height: 34px; border: 1px solid var(--faint); border-radius: 0; background: none; display: grid; place-content: center; justify-items: center; position: relative; overflow: hidden; box-shadow: none; }
+.coach b { font: 400 12px/1 var(--mono); }
+.coach i { display: none; }
+.coach.first, .coach.mixed { border-color: var(--fg); box-shadow: none; }
+.coach.resto { border-color: var(--fg); }
+.coach.resto b::after { content: "R"; margin-left: 2px; color: var(--accent); }
+.coach.bikes b::after { content: ""; }
+.coach.loco { flex-grow: .6; background: var(--faint); border-color: var(--faint); opacity: 1; }
+.coach.closed { opacity: .35; }
+.comp-sectors { display: flex; gap: 2px; }
+.comp-sectors span { flex: 1 1 0; min-width: 0; text-align: center; font: 11px/1 var(--mono); color: var(--muted); padding-top: 6px; border-top: 1px solid var(--rule); }
+.comp-where { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; margin: 4px 0 0; font: 12px/1.4 var(--mono); }
+.comp-where dt { color: var(--muted); }
+.comp-where dd { margin: 0; }
+.kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 16px; margin: 0; font-size: 14px; }
+.kv dt { color: var(--muted); font: 11px/1.6 var(--mono); }
+.kv dd { margin: 0; }
+.trip-kv { grid-template-columns: 84px minmax(0, 1fr); align-items: center; row-gap: 10px; padding-top: 4px; }
+.trip-kv dd { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.trip-kv .kt { font: 400 14px/1 var(--mono); }
+.trip-kv .delay { margin: 0; }
+.trip-kv .kn { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trip-kv .sp { margin-left: auto; flex: none; min-width: 26px; height: 22px; display: grid; place-items: center; border: 1px solid var(--faint); font: 12px/1 var(--mono); background: none; color: var(--fg); border-radius: 0; }
+.trip-kv .sp.changed { border-color: var(--accent); color: var(--accent); box-shadow: none; }
+.liv-lex .badge, .liv-re33 .badge, .liv-sncf .badge { background: none; color: var(--fg); border: 0; }
+.liv::after, .hero.liv::before { background: var(--accent); }
+.card.liv::after { display: none; }
+.card.liv, .hero.liv { padding-top: 12px; }
+.hero.liv { padding-top: 16px; }
+@media (max-width: 560px) { .hero.liv { padding-top: 34px; } }
+</style>
+</head>
+<body>
+<div class="bg-grid" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+<div class="bg-cursor" aria-hidden="true"></div>
+<div class="bg-readout" aria-hidden="true">X 0000 Y 0000</div>
+<div class="wrap">
+  <header class="topbar">
+    <span class="app">Departures</span>
+    <span class="sub">Swiss rail, live</span>
+    <span class="right">
+      <span class="clock" id="clock">--:--:--</span>
+      <span class="dot" id="live-dot" aria-hidden="true"></span>
+      <button class="menu-btn" id="menu-btn" aria-expanded="false" aria-controls="menu" aria-label="Menu: my trips and settings"><span class="bars" aria-hidden="true"></span><span class="count" id="trip-count" hidden></span></button>
+    </span>
+  </header>
+  <div class="rule" style="--i:0"></div>
+
+  <section class="menu" id="menu" hidden>
+    <h2>My trips</h2>
+    <div class="trips" id="trips"></div>
+    <button class="menu-row" id="open-settings" aria-expanded="false" aria-controls="settings">Settings <span id="settings-note">Train types key</span></button>
+  </section>
+
+  <section class="settings" id="settings" hidden>
+    <h2>Train types</h2>
+    <p>To show which train model runs each departure, the app reads SBB's train formation data. That needs your own free key from opentransportdata.swiss. The key stays on this device.</p>
+    <ol>
+      <li>Sign in at <a href="https://api-manager.opentransportdata.swiss/" target="_blank" rel="noopener">api-manager.opentransportdata.swiss</a>.</li>
+      <li>Open <b>Train Formation Service</b> and copy your key.</li>
+      <li>Paste it below and tap <b>Save key</b>.</li>
+    </ol>
+    <div class="row">
+      <input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your API key" aria-label="Train Formation Service API key">
+      <button id="key-save">Save key</button>
+      <button id="key-clear" class="secondary">Remove</button>
+    </div>
+    <span class="status" id="key-status" aria-live="polite"></span>
+    <p class="about">Live data from transport.opendata.ch (SBB timetable and real-time delays), refreshed every 30 seconds. All times are Swiss time. Train types come from SBB's train formation data; photos from Wikimedia Commons (<a href="../trains/CREDITS.md" target="_blank" rel="noopener">photo credits and licences</a>).</p>
+  </section>
+
+  <div class="head" style="--i:1">
+    <h1 class="headline" id="headline" aria-live="polite"><span>Departures.</span></h1>
+    <div class="strip" id="strip"><span id="updated">Not loaded yet</span></div>
+  </div>
+  <div class="rule" style="--i:1"></div>
+
+  <section class="sec" style="--i:2" aria-label="Route">
+    <div class="lab"><b>01</b>Route</div>
+    <div class="trip">
+      <div class="fields">
+        <div class="field from">
+          <span class="dot" aria-hidden="true"></span>
+          <label class="tag" for="from-in">from</label>
+          <input id="from-in" type="text" placeholder="Departure station" autocomplete="off" spellcheck="false"
+                 role="combobox" aria-expanded="false" aria-controls="from-list" aria-autocomplete="list">
+          <ul id="from-list" class="suggest" role="listbox" hidden></ul>
+        </div>
+        <div class="field to">
+          <span class="dot" aria-hidden="true"></span>
+          <label class="tag" for="to-in">to</label>
+          <input id="to-in" type="text" placeholder="Arrival station (optional)" autocomplete="off" spellcheck="false"
+                 role="combobox" aria-expanded="false" aria-controls="to-list" aria-autocomplete="list">
+          <button class="clear" id="to-clear" aria-label="Clear arrival station" hidden>×</button>
+          <ul id="to-list" class="suggest" role="listbox" hidden></ul>
+        </div>
+      </div>
+      <button class="swap" id="swap" aria-label="Swap departure and arrival">↑↓</button>
+    </div>
+  </section>
+  <div class="rule" style="--i:2"></div>
+
+  <section class="sec" style="--i:3" aria-label="When and how">
+    <div class="lab"><b>02</b>When</div>
+    <div style="display:grid;gap:12px;min-width:0">
+      <div class="whenrow">
+        <label class="whenchip" id="when-chip">
+          <span id="when-text">Now</span>
+          <input type="datetime-local" id="when-in" aria-label="Departure date and time (up to a week ahead)">
+        </label>
+        <button class="whenclear" id="when-clear" aria-label="Back to now" hidden>×</button>
+      </div>
+      <div class="chips" id="modes" role="group" aria-label="Transport types">
+        <button class="chip" data-mode="train">Train</button>
+        <button class="chip" data-mode="tram">Tram</button>
+        <button class="chip" data-mode="bus">Bus</button>
+        <button class="chip" data-mode="ship">Boat</button>
+        <button class="chip" data-mode="cableway">Cableway</button>
+      </div>
+    </div>
+  </section>
+  <div class="rule" style="--i:3"></div>
+
+  <section class="sec board" style="--i:4">
+    <div class="lab"><b>03</b>Board</div>
+    <div class="list-wrap">
+      <div class="board-head" hidden><h2 id="station-name">–</h2></div>
+      <div class="list" id="list" aria-live="polite"><div class="empty">Search for a station to see its departures.</div></div>
+    </div>
+  </section>
+
+  <div class="toast" id="toast" role="status" hidden></div>
+</div>
+
+<section class="detail" id="detail" role="dialog" aria-modal="true" aria-labelledby="d-title" hidden>
+  <div class="banner" id="d-banner" hidden></div>
+  <div class="inner">
+    <div class="dbar"><button class="back" id="d-back">Board</button>
+      <div class="dhead"><h1 class="headline" id="d-headline" aria-live="polite"><span>Waiting.</span></h1></div></div>
+    <div id="d-body"></div>
+  </div>
+</section>
+
+<script src="../trains/photos.js"></script>
+<script>for (const k in window.TRAIN_PHOTOS) window.TRAIN_PHOTOS[k].src = "../" + window.TRAIN_PHOTOS[k].src;</script>
+<script src="../trains.js"></script>
+<script>
+(() => {
+  const API = "https://transport.opendata.ch/v1";
+  const TT = window.TrainTypes;
+  const REFRESH_MS = 30000;
+  const COUNTDOWN_S = 20 * 60;            // count down to the second below 20 minutes
+  const PAST_S = 60 * 60;                 // how far back departed trains are kept
+  const GONE_AFTER_S = 30;                // "now" for half a minute, then "Departed"
+  const $ = (id) => document.getElementById(id);
+
+  // ---------- Saved settings (this device only) ----------
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem("sbbdep2." + k); return v ? JSON.parse(v) : d; } catch { return d; } },
+    set(k, v) { try { localStorage.setItem("sbbdep2." + k, JSON.stringify(v)); } catch {} }
+  };
+  // First launch of this version: start from the stations and choices of the original app (not its trips).
+  try {
+    if (!localStorage.getItem("sbbdep2.seeded")) {
+      for (const k of ["from", "to", "freq", "modes"]) { const v = localStorage.getItem("sbbdep." + k); if (v != null) localStorage.setItem("sbbdep2." + k, v); }
+      localStorage.setItem("sbbdep2.seeded", "1");
+    }
+  } catch {}
+  // Earlier versions kept a list of station tabs; start "From" on the one that was open.
+  const oldStations = store.get("stations", [{ id: "8507000", name: "Bern" }, { id: "8503000", name: "Zürich HB" }]);
+  const oldCurrent = store.get("current", null);
+  const state = {
+    from: store.get("from", null) || oldStations.find((x) => x.id === oldCurrent) || oldStations[0] || { id: "8507000", name: "Bern" },
+    to: store.get("to", null),
+    freq: store.get("freq", null),       // { id: {id, name, icon, n, t} }
+    modes: store.get("modes", ["train"]),
+    limit: 30,
+    when: null,                          // departure time searched for (seconds), or null for now
+    extra: new Map(),                    // later trains loaded with "Show more"
+    journeys: [],                        // the live list, from now on (or from state.when)
+    past: new Map(),                     // key -> row, trains that already left (or were due to)
+    pastAt: 0,
+    loadedAt: null,
+    error: null,
+    loading: false,
+    detail: null,                        // key of the train shown full screen
+    trips: store.get("trips", [])        // trains saved with "Add to my trips"
+  };
+  if (!state.freq) {
+    state.freq = {};
+    oldStations.forEach((x, i) => { state.freq[x.id] = { id: x.id, name: x.name, icon: x.icon || "", n: 0, t: -i }; });
+  }
+  const save = () => {
+    store.set("from", state.from); store.set("to", state.to); store.set("freq", state.freq);
+    store.set("modes", state.modes); store.set("trips", state.trips);
+  };
+  const isTrip = () => !!(state.to && state.from);
+  try { localStorage.removeItem("sbbdep2.watch"); } catch {}     // watching trains was removed
+
+  // ---------- Time helpers (always Swiss time) ----------
+  const fmtTime = new Intl.DateTimeFormat("de-CH", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Zurich" });
+  const fmtClock = new Intl.DateTimeFormat("de-CH", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Europe/Zurich" });
+  const fmtDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Zurich" });
+  const fmtDay = new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Zurich" });
+  const hhmm = (sec) => fmtTime.format(new Date(sec * 1000));
+  const now = () => Date.now() / 1000;
+  const when = (j) => j.expected ?? j.planned;
+  const isGone = (j) => when(j) < now() - GONE_AFTER_S;
+
+  // ---------- Normalising both kinds of result into one row shape ----------
+  const tsOf = (iso, fallback) => {
+    if (!iso) return fallback ?? null;
+    // API gives "2026-11-12T10:02:00+0100"; add the colon so every browser parses it.
+    const t = Date.parse(String(iso).replace(/([+-]\d{2})(\d{2})$/, "$1:$2"));
+    return Number.isFinite(t) ? t / 1000 : (fallback ?? null);
+  };
+  const cleanPlat = (p) => (p == null ? "" : String(p).replace(/!$/, "").trim());
+
+  // The Swiss timetable lists cross-border trains under SBB (responsible for the Swiss stretch).
+  // Show who actually runs them. TER and TGV (non-Lyria) are SNCF, Lyria is TGV Lyria; ICE/IC Germany-bound stay as given.
+  // Léman Express is run jointly: a Régiolis is an SNCF train, a FLIRT an SBB one (from the train formation data).
+  function opLabel(t) {
+    if (t.livery === "lex" && TT && TT.hasKey() && t.trainNo && t.evu) {
+      const r = TT.lookup(t);
+      if (r && r.state === "ok" && !r.info.unknown) {
+        if (r.info.main === "regiolis") return "SNCF · Léman Express";
+        if (r.info.main === "flirtLex") return "SBB · Léman Express";
+      }
+      return "Léman Express";
+    }
+    return t.operator || "";
+  }
+  function realOperator(cat, num, op) {
+    const c = String(cat || "").toUpperCase();
+    if (c === "TGV" || /LYRIA/i.test(op)) return "TGV Lyria";
+    if (c === "TER" || c === "OUIGO" || c === "INOUI" || /SNCF/i.test(op)) return "SNCF";
+    return op;
+  }
+  function trainFields(j, planned) {
+    const cat = j.category || "";
+    const num = j.number && !/^\d{4,}$/.test(String(j.number)) ? String(j.number) : "";
+    return {
+      cat, num,
+      line: (cat + (num ? " " + num : "")).trim() || j.name || "?",
+      longDistance: /^(IC|ICE|IR|EC|EN|RE|TGV|RJX?|NJ|PE|IRE|EXT)/.test(cat),
+      livery: /^L\d+$/i.test(num) || /^(SL|RL)\d*$/i.test(cat) ? "lex"
+            : cat === "RE" && num === "33" ? "re33"
+            : /SNCF/i.test(j.operator || "") || /^(TER|TGV|OUIGO|INOUI|TER200)$/i.test(cat) ? "sncf" : "",
+      operator: realOperator(cat, num, j.operator || ""),
+      trainNo: /^\d+$/.test(String(j.name || "")) ? String(parseInt(j.name, 10)) : null,
+      evu: TT ? TT.evuFor(j.operator) : null,
+      date: planned != null ? fmtDate.format(new Date(planned * 1000)) : null
+    };
+  }
+  function timing(stop, tsField, isoField) {
+    const planned = stop[tsField] ?? tsOf(stop[isoField]);
+    const delay = Number.isFinite(stop.delay) ? stop.delay : 0;
+    const progTs = tsOf(stop.prognosis && stop.prognosis[isoField]);
+    const expected = progTs ?? (planned != null ? planned + delay * 60 : null);
+    return { planned, expected, delay: expected && planned ? Math.round((expected - planned) / 60) : delay };
+  }
+  function platformOf(stop) {
+    const plat = cleanPlat(stop.platform), prog = cleanPlat(stop.prognosis && stop.prognosis.platform);
+    return { platform: prog || plat, platformChanged: !!(prog && plat && prog !== plat) };
+  }
+  // One stop on a route: planned and expected arrival/departure, delay and platform.
+  function stopOf(p) {
+    if (!p) return null;
+    const st = p.station || p.location || {};
+    const d = timing(p, "departureTimestamp", "departure"), a = timing(p, "arrivalTimestamp", "arrival");
+    return { name: st.name || "", id: st.id ? String(st.id) : "", dep: d.planned, depX: d.expected, arr: a.planned, arrX: a.expected,
+             depDelay: d.planned != null ? d.delay : 0, arrDelay: a.planned != null ? a.delay : 0,
+             delay: Math.max(d.planned != null ? d.delay : 0, a.planned != null ? a.delay : 0), ...platformOf(p) };
+  }
+
+  function fromBoard(j) {
+    const stop = j.stop || {};
+    const t = timing(stop, "departureTimestamp", "departure");
+    const stops = (j.passList || []).map(stopOf).filter((s) => s && s.name);
+    // The route list starts after this station; put this station first.
+    const here = stopOf(stop);
+    if (here && here.name && (!stops.length || stops[0].name !== here.name)) stops.unshift(here);
+    const last = stops.length > 1 ? stops[stops.length - 1] : null;
+    return {
+      ...t, ...platformOf(stop), ...trainFields(j, t.planned),
+      arr: last ? last.arr : null, arrX: last ? last.arrX : null, arrDelay: last ? last.arrDelay : 0,
+      arrName: last ? last.name : "",
+      dur: last && last.arr && t.planned ? minutesText((last.arr - t.planned) / 60) : "",
+      key: [t.planned, j.category, j.number, j.to].join("|"),
+      to: j.to || "",
+      stops,
+      sub: (() => { const v = stops.slice(1, -1).map((s) => s.name); return v.length ? "via " + v.slice(0, 4).join(", ") : ""; })()
+    };
+  }
+
+  function minutesText(m) {
+    m = Math.round(m); if (!(m > 0)) return "";
+    return m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")}` : `${m} min`;
+  }
+  function duration(d) {   // "00d02:27:00"
+    const m = /(\d+)d(\d+):(\d+)/.exec(d || ""); if (!m) return "";
+    const h = +m[1] * 24 + +m[2], min = +m[3];
+    return h ? `${h} h ${String(min).padStart(2, "0")}` : `${min} min`;
+  }
+  function fromConnection(c) {
+    const f = c.from || {}, a = c.to || {};
+    const t = timing(f, "departureTimestamp", "departure");
+    const legs = (c.sections || []).map((s) => {
+      const from = stopOf(s.departure), arrive = stopOf(s.arrival);
+      if (!s.journey) return { walk: true, from, arrive };
+      return { ...trainFields(s.journey, from && from.dep), to: s.journey.to || "", from, arrive,
+               stops: (s.journey.passList || []).map(stopOf).filter((x) => x && x.name) };
+    });
+    const rides = legs.filter((l) => !l.walk);
+    const first = (c.sections || []).find((s) => s.journey);
+    const fj = first ? first.journey : {};
+    const arr = timing(a, "arrivalTimestamp", "arrival");
+    const changes = rides.slice(1).map((l) => l.from && l.from.name).filter(Boolean);
+    const arrName = (a.station && a.station.name) || state.to.name;
+    const changeText = changes.length ? (changes.length === 1 ? "1 change at " + changes[0] : changes.length + " changes") : "direct";
+    return {
+      ...t, ...platformOf(f), ...trainFields(fj, t.planned),
+      key: ["c", t.planned, fj.name || fj.number, fj.to].join("|"),
+      to: fj.to || arrName,
+      trip: true, legs, arrName,
+      arr: arr.planned, arrX: arr.expected, arrDelay: arr.delay,
+      dur: duration(c.duration), changeText,
+      sub: [`Arrives ${arrName} ${hhmm(arr.expected ?? arr.planned)}` + (arr.delay > 0 ? ` (+${arr.delay})` : ""), duration(c.duration), changeText].filter(Boolean).join(" · "),
+      more: rides.length > 1 ? "+" + (rides.length - 1) : ""
+    };
+  }
+
+  // ---------- API ----------
+  async function getJSON(path, params) {
+    const url = new URL(API + path);
+    for (const [k, v] of params) url.searchParams.append(k, v);
+    const res = await fetch(url, { headers: { Accept: "application/json" } });
+    if (!res.ok) throw new Error(res.status === 429 ? "Too many requests. Wait a minute and it will retry." : "The timetable service answered with error " + res.status + ".");
+    return res.json();
+  }
+
+  // Departures (or connections) from `start` (seconds; null = now).
+  async function fetchRows(start, limit) {
+    const params = [];
+    const at = start != null ? new Date(start * 1000) : null;
+    if (isTrip()) {
+      params.push(["from", state.from.id], ["to", state.to.id], ["limit", String(limit)]);
+      if (at) params.push(["date", fmtDate.format(at)], ["time", fmtTime.format(at)]);
+    } else {
+      params.push(["id", state.from.id], ["limit", String(limit)]);
+      if (at) params.push(["datetime", fmtDate.format(at) + " " + fmtTime.format(at)]);
+    }
+    for (const m of state.modes) params.push(["transportations[]", m]);
+    if (isTrip()) return { rows: ((await getJSON("/connections", params)).connections || []).map(fromConnection) };
+    const data = await getJSON("/stationboard", params);
+    return { rows: (data.stationboard || []).map(fromBoard), data };
+  }
+
+  let loadSeq = 0;
+  async function loadBoard({ quiet } = {}) {
+    if (!state.from) return;
+    const seq = ++loadSeq;
+    state.loading = true;
+    if (!quiet) render();
+    try {
+      // Departed trains: fetched once per search (and every few minutes), from an hour ago.
+      const wantPast = !state.when && Date.now() - state.pastAt > 5 * 60000;
+      const [live, past] = await Promise.all([
+        // From 20 minutes ago, so a delayed train keeps getting updates after its planned time has passed
+        // (the timetable lists departures by planned time) and only shows as departed once it has really left.
+        state.when ? fetchRows(state.when, state.limit) : fetchRows(now() - 20 * 60, state.limit + (isTrip() ? 4 : 15)),
+        wantPast ? fetchRows(now() - PAST_S, isTrip() ? 8 : 40).catch(() => null) : null
+      ]);
+      if (seq !== loadSeq) return;           // a newer search replaced this one
+      const data = live.data;
+      if (data && data.station && data.station.name && data.station.name !== state.from.name) { state.from.name = data.station.name; save(); syncInputs(); }
+      if (data && !live.rows.length && !state.from.icon) {
+        try {
+          const loc = await getJSON("/locations", [["query", state.from.name], ["type", "station"]]);
+          const hit = (loc.stations || []).find((x) => String(x.id) === state.from.id);
+          if (hit && hit.icon) { state.from.icon = hit.icon; save(); }
+        } catch {}
+      }
+      // Trains that dropped off the live list because their time passed stay on as departed.
+      const fresh = new Set(live.rows.map((r) => r.key));
+      for (const old of state.journeys) if (!fresh.has(old.key) && old.planned < now() + 60) state.past.set(old.key, old);
+      if (past) {
+        for (const r of past.rows) if (r.planned < now()) state.past.set(r.key, r);
+        state.pastAt = Date.now();
+      }
+      for (const [k, r] of state.past) if (when(r) < now() - PAST_S) state.past.delete(k);
+      state.journeys = live.rows;
+      state.loadedAt = Date.now();
+      state.error = null;
+    } catch (e) {
+      if (seq !== loadSeq) return;
+      state.error = e instanceof TypeError ? "Can't reach the timetable service. Check your internet connection." : e.message;
+    } finally {
+      if (seq === loadSeq) { state.loading = false; render(); }
+    }
+  }
+
+  // The next batch after the last train shown (any distance ahead).
+  async function loadMore(btn, after) {
+    btn.textContent = "Loading…"; btn.disabled = true;
+    const seq = loadSeq;
+    try {
+      const { rows } = await fetchRows(after + 60, isTrip() ? 6 : 40);
+      if (seq !== loadSeq) return;
+      for (const r of rows) state.extra.set(r.key, r);
+      if (!rows.some((r) => r.planned > after)) toast("No later trains found.");
+    } catch { toast("Couldn't load more. Check your connection."); }
+    renderList();
+  }
+
+  // Everything to show: departed trains first (oldest at the top), then upcoming in timetable order.
+  function allRows() {
+    const m = new Map();
+    for (const r of state.past.values()) m.set(r.key, r);
+    for (const r of state.extra.values()) m.set(r.key, r);
+    for (const r of state.journeys) m.set(r.key, r);
+    const rows = [...m.values()].filter((r) => r.planned != null && when(r) >= now() - PAST_S);
+    const gone = rows.filter(isGone).sort((a, b) => when(a) - when(b));
+    const next = rows.filter((r) => !isGone(r)).sort((a, b) => a.planned - b.planned || when(a) - when(b));
+    return { gone, next };
+  }
+  const findRow = (key) => state.journeys.find((r) => r.key === key) || state.extra.get(key) || state.past.get(key) || state.trips.find((r) => r.key === key) || null;
+
+  // ---------- Rendering helpers ----------
+  const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+
+  const fmtDayShort = new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "Europe/Zurich" });
+  const dayShort = (sec) => fmtDayShort.format(new Date(sec * 1000));
+  function untilText(ts) {
+    const m = Math.floor((ts - now()) / 60);
+    if (m <= 0) return "now";
+    if (m < 60) return m + "′";
+    return Math.floor(m / 60) + " h " + String(m % 60).padStart(2, "0");
+  }
+  function countdown(ts) {        // minutes and seconds, e.g. 12′05″
+    const s = Math.max(0, Math.round(ts - now()));
+    return s === 0 ? "now" : Math.floor(s / 60) + "′" + String(s % 60).padStart(2, "0") + "″";
+  }
+  const delayEl = (d) => el("span", "delay", "+" + d + "′");
+
+  // The big time: countdown under 20 minutes, the departure time later on, "Departed" once it has left.
+  // The big time. Counts down to the planned departure (trains don't leave early, and a delay is only a
+  // forecast). Once the planned time has passed, a late train shows "Delayed" and counts down to its
+  // estimated departure; "Departed" only once that has passed too.
+  function fillWhen(cell, j) {
+    const t = when(j), left = j.planned - now(), toExpected = t - now();
+    cell.replaceChildren();
+    let big, meta, label, chip = j.delay > 0;
+    if (isGone(j)) {
+      big = el("span", "big gone", "Departed");
+      meta = el("span", "meta", hhmm(j.planned));
+      label = `departed, ${hhmm(j.planned)}`;
+    } else if (left <= 0 && toExpected > 0 && j.delay > 0) {
+      big = el("span", "big countdown", countdown(t));
+      meta = el("span", "meta");
+      meta.append(el("span", "delay dl", `Delayed +${j.delay}′`));
+      chip = false;
+      label = `delayed ${j.delay} minutes, expected to leave in ${Math.floor(toExpected / 60)} minutes ${Math.round(toExpected % 60)} seconds`;
+    } else if (left < COUNTDOWN_S) {
+      const c = countdown(j.planned);
+      big = el("span", "big " + (c === "now" ? "now" : "countdown"), c);
+      meta = el("span", "meta", "dep. " + hhmm(j.planned));
+      label = left <= 0 ? "departing now" : `departs in ${Math.floor(left / 60)} minutes ${Math.round(left % 60)} seconds`;
+    } else {
+      big = el("span", "big", hhmm(j.planned));
+      meta = el("span", "meta", left > 12 * 3600 && dayShort(j.planned) !== dayShort(now()) ? dayShort(j.planned) : "in " + untilText(j.planned));
+      label = `departs ${hhmm(j.planned)}`;
+    }
+    if (chip) { meta.append(delayEl(j.delay)); label += `, ${j.delay} minutes late`; }
+    rollDigits(big, cell.dataset.prev || "");
+    cell.dataset.prev = big.textContent;
+    cell.append(big, meta);
+    cell.dataset.label = label;
+  }
+  // Numbers roll when they change: each character that differs from last time slides in.
+  function rollDigits(big, prev) {
+    const txt = big.textContent;
+    if (!prev || prev.length !== txt.length || !/\d/.test(txt)) return;
+    big.textContent = "";
+    [...txt].forEach((c, i) => big.append(el("span", "ch" + (c !== prev[i] ? " roll" : ""), c)));
+  }
+  function platBox(j) {
+    const p = el("span", "plat" + (j.platformChanged ? " changed" : "") + (j.platform ? "" : " unknown"));
+    const txt = j.platform || "–";
+    p.append(el("b", txt.length > 3 ? "long" : "", txt));
+    p.title = j.platform ? "Platform " + j.platform + (j.platformChanged ? " (changed)" : "") : "Platform not announced yet";
+    return p;
+  }
+  const badge = (j, extra) => el("span", "badge" + (j.longDistance ? " long" : ""), j.line + (extra || ""));
+
+  // ---------- Board ----------
+  const timeCells = [];          // [cell, row, card|null, wasGone]
+  let pinNow = true;             // keep the list scrolled to "now" until the user scrolls away
+  const list = $("list");
+
+  function nowTop() {
+    const d = list.querySelector(".now-line");
+    return d ? d.offsetTop - 4 : 0;
+  }
+  function updatePin() {
+    const target = Math.min(nowTop(), list.scrollHeight - list.clientHeight);
+    pinNow = Math.abs(list.scrollTop - target) < 24;
+  }
+  list.addEventListener("scroll", updatePin, { passive: true });
+
+  function renderModes() {
+    for (const b of $("modes").querySelectorAll(".chip"))
+      b.setAttribute("aria-pressed", String(state.modes.includes(b.dataset.mode)));
+  }
+
+  function card(j, cells = timeCells) {
+    if (cells === menuCells) { const ph = tripPhase(j); if (ph.kind !== "wait") return onboardCard(j, ph, cells); }
+    const cls = ["card"];
+    if (j.livery) cls.push("liv", "liv-" + j.livery);
+    if (isGone(j)) cls.push("gone");
+    const r = el("div", cls.join(" "));
+    r.dataset.key = j.key;
+    r.tabIndex = 0; r.setAttribute("role", "button");
+    const head = el("div", "head");
+    head.append(badge(j, j.more ? " " + j.more : ""), el("span", "dest", j.to));
+    const w = el("div", "when"); fillWhen(w, j);
+    r.append(head, w);
+    if (j.arr != null || j.dur) {
+      const ti = el("div", "tripinfo");
+      if (j.dur) ti.append(el("b", "", j.dur));
+      if (j.arr != null) {
+        ti.append(j.dur ? " · arr. " : "Arr. ", el("b", "", hhmm(j.arr)));
+        if (j.arrDelay > 0) ti.append(delayEl(j.arrDelay));
+      }
+      if (j.trip) ti.append(" · " + j.changeText);
+      r.append(ti);
+    }
+    r.append(platBox(j));
+    const label = () => `${j.line} to ${j.to}, ${w.dataset.label}, platform ${j.platform || "unknown"}${j.dur ? ", journey " + j.dur : ""}${j.arr != null ? ", arrives " + (j.trip ? j.arrName + " " : "") + hhmm(j.arrX ?? j.arr) : ""}${j.trip ? ", " + j.changeText : ""}. Show details.`;
+    r.setAttribute("aria-label", label());
+    cells.push([w, j, r, isGone(j), label, null, cells === menuCells ? phaseKey(j) : ""]);
+    const open = () => openDetail(j.key, r);
+    r.addEventListener("click", open);
+    r.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } });
+    return r;
+  }
+
+  function renderList() {
+    // Remember what's at the top of the view, so a refresh doesn't make the list jump.
+    let anchor = null;
+    if (!pinNow) {
+      for (const c of list.querySelectorAll(".card")) {
+        if (c.offsetTop + c.offsetHeight > list.scrollTop) { anchor = [c.dataset.key, c.offsetTop - list.scrollTop]; break; }
+      }
+    }
+    list.replaceChildren(); timeCells.length = 0;
+    const trip = isTrip();
+    $("station-name").textContent = state.from ? state.from.name + (trip ? " → " + state.to.name : "") + (state.when ? ` · ${dayShort(state.when)} from ${hhmm(state.when)}` : "") : "–";
+    if (state.error) list.append(el("div", "error", state.error));
+    const { gone, next } = allRows();
+    if (!gone.length && !next.length) {
+      if (!state.error) {
+        if (state.loading) list.append(el("div", "empty", trip ? "Looking for trains…" : "Loading departures…"));
+        else if (trip) list.append(el("div", "empty", `No connections found from ${state.from.name} to ${state.to.name} for these transport types.`));
+        else list.append(state.from ? emptyBoard(state.from) : el("div", "empty", "Enter a departure station."));
+      }
+      return;
+    }
+    for (const j of gone) list.append(card(j));
+    if (gone.length) {
+      const nl = el("div", "now-line");
+      nl.append(el("span", "", "Now · scroll up for departed"));
+      list.append(nl);
+    }
+    for (const j of next) list.append(card(j));
+    if (!next.length && !state.error) list.append(el("div", "empty", "No more departures loaded."));
+    const lastT = next.length ? next[next.length - 1].planned : null;
+    if (lastT != null && lastT < now() + 8 * 86400) {
+      const more = el("button", "more", trip ? "Show later trains" : "Show more departures");
+      more.addEventListener("click", () => loadMore(more, lastT));
+      list.append(more);
+    }
+    if (pinNow) list.scrollTop = nowTop();
+    else if (anchor) {
+      const c = [...list.querySelectorAll(".card")].find((x) => x.dataset.key === anchor[0]);
+      if (c) list.scrollTop = c.offsetTop - anchor[1];
+    }
+    updatePin();
+  }
+
+  const KIND = { train: "Train station", tram: "Tram stop", bus: "Bus stop", ship: "Boat landing", cableway: "Cableway station", funicular: "Funicular" };
+  function emptyBoard(s) {
+    const box = el("div", "empty");
+    const shown = state.modes.map((m) => ({ train: "trains", tram: "trams", bus: "buses", ship: "boats", cableway: "cableways" }[m])).join(", ");
+    if (s.icon && s.icon !== "train" && !state.modes.includes(s.icon) && KIND[s.icon]) {
+      box.append(el("div", "", `${s.name} is a ${KIND[s.icon].toLowerCase()}, so no ${shown} leave from here. For trains, search for the train station instead (for example “Genève” for Cornavin).`));
+      const mode = s.icon === "funicular" ? "cableway" : s.icon;
+      const b = el("button", "fix", "Show " + KIND[s.icon].split(" ")[0].toLowerCase() + " departures here");
+      b.addEventListener("click", () => { state.modes = [...state.modes, mode]; save(); loadBoard(); });
+      box.append(b);
+    } else {
+      box.append(el("div", "", `No ${shown} leave from ${s.name} in the next few hours. Try turning on other transport types above.`));
+    }
+    return box;
+  }
+
+  // ---------- Train types ----------
+  const openTrains = new Set();      // which rows of the Trains list are open (kept across refreshes)
+  function modelName(t) {
+    if (!TT || !TT.hasKey() || !t.trainNo || !t.evu) return "";
+    const r = TT.lookup(t);
+    if (!r || r.state !== "ok" || r.info.unknown) return "";
+    const names = [...new Set(r.info.models.map((m) => TT.MODELS[m].name))];
+    return names.length ? names.join(" + ") : TT.MODELS[r.info.main].name;
+  }
+  // Where the carriages stop on the platform: a strip in sector order, the sectors underneath,
+  // and where to find first class, the restaurant, bikes and the family zone.
+  function compositionBox(t, station, platform) {
+    if (!TT || !TT.hasKey() || !t.trainNo || !t.evu) return null;
+    const r = TT.lookup(t);
+    if (!r || r.state !== "ok" || !r.info.coaches || r.info.coaches.length < 2) return null;
+    let coaches = r.info.coaches.map((c) => ({ ...c, at: c.sectors[station] || [] }));
+    const hasSectors = coaches.some((c) => c.at.length);
+    const firstLetter = (c) => (c.at[0] || "");
+    const known = coaches.filter((c) => c.at.length);
+    if (hasSectors && known.length > 1 && firstLetter(known[0]) > firstLetter(known[known.length - 1])) coaches = coaches.reverse();
+    const box = el("div", "comp");
+    const head = el("div", "comp-head");
+    head.append(el("span", "", hasSectors ? `On the platform at ${station}` : "Composition"));
+    if (platform) { const sp = el("span", "sp", platform); sp.title = "Platform " + platform; head.append(sp); }
+    box.append(head);
+    // the carriages
+    const strip = el("div", "comp-strip");
+    for (const c of coaches) {
+      const k = el("div", "coach" + (c.loco ? " loco" : c.first && !c.second ? " first" : c.first ? " mixed" : "") + (c.restaurant ? " resto" : "") + (c.closed ? " closed" : ""));
+      if (!c.loco) k.append(el("b", "", c.restaurant && !c.first && !c.second ? "R" : c.first && !c.second ? "1" : c.first ? "1|2" : "2"));
+      const icons = [c.restaurant && (c.first || c.second) ? "🍴" : "", c.bike ? "🚲" : "", c.family ? "👪" : "", c.wheelchair ? "♿" : ""].filter(Boolean).join("");
+      if (icons) k.append(el("i", "", icons));
+      k.title = c.loco ? "Locomotive" : [c.first && "1st class", c.second && "2nd class", c.restaurant && "restaurant", c.bike && "bikes", c.family && "family zone", c.wheelchair && "wheelchair spaces", c.closed && "closed"].filter(Boolean).join(", ") + (c.at.length ? " · sector " + c.at.join("/") : "");
+      strip.append(k);
+    }
+    box.append(strip);
+    // the sectors, each as wide as the carriages standing in it
+    if (hasSectors) {
+      const weight = new Map();
+      for (const c of coaches) for (const x of c.at) weight.set(x, (weight.get(x) || 0) + 1 / c.at.length);
+      const row = el("div", "comp-sectors");
+      for (const x of [...weight.keys()].sort()) { const cell = el("span", "", x); cell.style.flexGrow = weight.get(x).toFixed(3); row.append(cell); }
+      box.append(row);
+      // where things are
+      // Sectors as runs of consecutive letters: "B–C, F–G" (a double train has two first-class groups).
+      const where = (pred) => {
+        const xs = [...new Set(coaches.filter(pred).flatMap((c) => c.at))].sort(), runs = [];
+        for (const x of xs) { const last = runs[runs.length - 1]; if (last && x.charCodeAt(0) === last[1].charCodeAt(0) + 1) last[1] = x; else runs.push([x, x]); }
+        return runs.map(([a, b]) => a === b ? a : `${a}–${b}`).join(", ");
+      };
+      const dl = el("dl", "comp-where");
+      for (const [label, pred] of [["1st class", (c) => c.first], ["2nd class", (c) => c.second], ["Restaurant", (c) => c.restaurant], ["Bikes", (c) => c.bike], ["Family zone", (c) => c.family], ["Wheelchair", (c) => c.wheelchair]]) {
+        const w = where(pred);
+        if (w) dl.append(el("dt", "", label), el("dd", "", (/[,–]/.test(w) ? "Sectors " : "Sector ") + w));
+      }
+      if (dl.childElementCount) box.append(dl);
+    }
+    return box;
+  }
+
+  function trainInfo(t, forText, inBanner) {
+    const box = el("div", "tinfo");
+    if (forText) box.append(el("span", "for", forText));
+    if (!TT || !TT.hasKey()) {
+      box.append(el("p", "note", "Add your free Train Formation Service key under Settings to see which train model this is, with a photo."));
+      return box;
+    }
+    if (!t.trainNo || !t.evu) { box.append(el("p", "note", "The train type isn't published for this operator.")); return box; }
+    const r = TT.lookup(t);
+    if (!r || r.state === "loading") { box.append(el("p", "note", "Checking which train this is…")); return box; }
+    if (r.state !== "ok" || r.info.unknown) {
+      box.append(el("p", "note", r.state === "ok" ? "Train type: " + (r.info.raw || "not known") : "The train type isn't published for this train yet."));
+      return box;
+    }
+    const info = r.info, m = TT.MODELS[info.main], photo = TT.PHOTOS[info.main];
+    if (photo && !inBanner) {
+      const img = el("img"); img.src = photo.src; img.alt = `${m.name}, ${m.detail}`;
+      box.append(img);
+    }
+    const names = [...new Set(info.models.map((id) => TT.MODELS[id].name))];
+    box.append(el("span", "tname", (names.length ? names.join(" + ") : m.name) + (info.loco && info.models.length ? " with " + TT.MODELS[info.loco].name : "")));
+    box.append(el("span", "tdetail", m.detail));
+    const facts = el("dl", "facts");
+    for (const [k, v] of [["Cars", info.cars], ["Seats", info.seats], ["Length", info.length ? info.length + " m" : ""]]) {
+      if (!v) continue;
+      const d = el("div"); d.append(el("dt", "", k), el("dd", "", String(v))); facts.append(d);
+    }
+    if (facts.childElementCount) box.append(facts);
+    if (photo) {
+      // No credit line on the card; the photo itself carries it (long-press / hover), and all credits are in Settings.
+      const img = box.querySelector("img");
+      if (img) img.title = `Photo: ${photo.credit}, ${photo.license}, Wikimedia Commons`;
+    }
+    return box;
+  }
+
+  // ---------- Detail page ----------
+  let detailSnap = null, lastFocus = null;
+  const detailCells = [];
+  function openDetail(key, from) {
+    const j = findRow(key);
+    if (!j) return;
+    state.detail = key; detailSnap = j; lastFocus = from || null; allStops = false; foldedCount = 0; openTrains.clear();
+    verifyLegs(j);
+    if (!(history.state && history.state.detail)) history.pushState({ detail: 1 }, "", "#train");
+    $("detail").hidden = false; document.body.classList.add("locked");
+    renderDetail();
+    $("detail").scrollTop = 0;
+    $("d-back").focus({ preventScroll: true });
+  }
+  function hideDetail() {
+    if ($("detail").hidden) return;
+    $("detail").hidden = true; document.body.classList.remove("locked");
+    state.detail = null; detailCells.length = 0; routeCells.length = 0;
+    if (lastFocus && lastFocus.isConnected) lastFocus.focus({ preventScroll: true });
+  }
+  $("d-back").addEventListener("click", () => { if (history.state && history.state.detail) history.back(); else hideDetail(); });
+  window.addEventListener("popstate", () => { if (!(history.state && history.state.detail)) hideDetail(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("detail").hidden) $("d-back").click(); });
+  if (location.hash === "#train") history.replaceState(null, "", location.pathname + location.search);
+
+  // A stop time: the expected time (planned plus delay), with the delay underneath.
+  function stopTime(planned, expected, delay) {
+    const t = el("span", "t");
+    if (planned == null) return t;
+    t.textContent = hhmm(delay > 0 && expected != null ? expected : planned);
+    if (delay > 0) { const d = delayEl(delay); d.title = `${delay} min late, planned ${hhmm(planned)}`; t.append(d); }
+    return t;
+  }
+  // ---------- Where the train is ----------
+  const liveRoutes = new Map();   // "evu|date|nr" -> {state, at, stops}
+  const routeCells = [];          // functions that redraw a route section
+  // The whole line for train t: the route from the formation data (origin to terminus), with live
+  // times from the departure board at its origin. Without that: the stops from this station on.
+  function routeFor(t) {
+    const fallback = { stops: t.stops || [], full: false };
+    if (!TT || !TT.hasKey()) return { ...fallback, why: "nokey" };
+    if (!t.trainNo || !t.evu) return { ...fallback, why: "none" };
+    const f = TT.lookup(t);
+    if (!f || f.state === "loading") return { ...fallback, loading: true };
+    let plan = f.state === "ok" && f.info.route && f.info.route.length > 1 ? f.info.route : null;
+    const boardDep = t.from ? t.from.dep : t.planned;
+    if (plan && boardDep && !plan.some((x) => x.dep === boardDep)) plan = null;   // a different run of the same number
+    if (!plan) return { ...fallback, why: "none" };
+    const k = `${t.evu}|${t.date}|${t.trainNo}`;
+    if (t.stops) withPlatforms(t.stops, plan);
+    const r = liveRoutes.get(k);
+    if (!r || (r.state !== "loading" && Date.now() - r.at > 60000)) fetchLiveRoute(k, t, plan, r);
+    const live = liveRoutes.get(k);
+    const planStops = plan.filter((p) => p.name).map((p) => ({ name: p.name, arr: p.arr, dep: p.dep, arrX: null, depX: null,
+      arrDelay: 0, depDelay: 0, delay: 0, platform: p.platform, platformChanged: false }));
+    const liveStops = live && live.stops ? withPlatforms(live.stops, plan) : [];
+    const line = mergeLine(t.stops || [], liveStops, planStops);
+    if (line.length < 2) return { ...fallback, why: "none" };
+    return { stops: line, full: true, live: liveStops.length > 0, loading: !liveStops.length && (!live || live.state === "loading") };
+  }
+  // The whole line from up to three sources, which can each cover only part of it: this station's own list
+  // (your part, live), the board at the train's first station (live, but for trains from France it ends at the
+  // border) and the formation data (planned, the whole Swiss part). Each stop is taken from the best source that
+  // has it, and the line is put in order by time.
+  function mergeLine(own, live, plan) {
+    const byName = new Map();
+    for (const list of [plan, live, own]) for (const s of list) if (s && s.name) byName.set(s.name, { ...(byName.get(s.name) || {}), ...s });
+    const t = (s) => s.dep ?? s.arr ?? Infinity;
+    return [...byName.values()].sort((a, b) => t(a) - t(b));
+  }
+  // The live data only has a platform for some stops; the formation data has the planned one for each.
+  function withPlatforms(stops, plan) {
+    for (const s of stops) {
+      if (s.platform) continue;
+      const p = plan.find((x) => (x.name && x.name === s.name) || (s.dep != null && x.dep === s.dep) || (s.arr != null && x.arr === s.arr));
+      if (p && p.platform) s.platform = p.platform;
+    }
+    return stops;
+  }
+  async function fetchLiveRoute(k, t, plan, prev) {
+    liveRoutes.set(k, { ...(prev || {}), state: "loading", at: Date.now() });
+    let stops = (prev && prev.stops) || null;
+    try {
+      const o = plan[0], at = new Date((o.dep ?? o.arr) * 1000);
+      const data = await getJSON("/stationboard", [["id", String(o.uic)], ["datetime", fmtDate.format(at) + " " + fmtTime.format(at)], ["limit", "20"]]);
+      const hit = (data.stationboard || []).find((x) => String(parseInt(x.name, 10)) === t.trainNo);
+      if (hit) { const st = fromBoard(hit).stops; if (st.length > 1) stops = st; }
+    } catch {}
+    liveRoutes.set(k, { state: "done", at: Date.now(), stops });
+    refreshRoutes();
+  }
+  const refreshRoutes = () => { routeCells.forEach((fn) => fn()); syncAllStops(); };
+
+  // Arrival and departure at a stop, using the live time, else the planned time plus the train's delay.
+  function stopTimes(s, fb) {
+    const a = s.arr != null ? (s.arrX ?? s.arr + fb * 60) : null;
+    const d = s.dep != null ? (s.depX ?? s.dep + fb * 60) : null;
+    return [a ?? d, d ?? a];
+  }
+  function trainPosition(stops, fb) {
+    const n = now();
+    let prev = null;
+    for (let i = 0; i < stops.length; i++) {
+      const [a, d] = stopTimes(stops[i], fb);
+      if (a == null) continue;
+      if (n < a) return prev == null ? { kind: "before", i } : { kind: "between", i: prev, next: i, at: a };
+      if (i < stops.length - 1 && n <= d) return { kind: "at", i, until: d };
+      prev = i;
+    }
+    return { kind: "after", i: stops.length - 1 };
+  }
+
+  // A stop time: the expected time (planned plus delay), with the delay underneath.
+  function stopTime(planned, expected, delay) {
+    const t = el("span", "t");
+    if (planned == null) return t;
+    t.textContent = hhmm(delay > 0 && expected != null ? expected : planned);
+    if (delay > 0) { const d = delayEl(delay); d.title = `${delay} min late, planned ${hhmm(planned)}`; t.append(d); }
+    return t;
+  }
+  const stopsText = (k) => k === 1 ? "1 stop" : k + " stops";
+
+  // The line as a timeline: every stop, the train's position, and your stop(s) marked.
+  // mine: [boarding station, alighting station?]; fb: the train's delay, for stops without live times.
+  // "All stops" switch: show the whole line of every train in the journey, or only your part of it.
+  // It shows when some stops are folded away, and always while it is switched on.
+  let allStops = false, foldedCount = 0;
+  function sectHead(title, sub) {
+    const head = el("div", "sect-head");
+    const b = el("button", "allstops");
+    b.setAttribute("role", "switch");
+    b.append(el("span", "", "All stops"), el("span", "sw"));
+    b.hidden = true;
+    b.addEventListener("click", () => { allStops = !allStops; refreshRoutes(); });
+    const t = el("div", "sh-text");
+    t.append(el("h3", "sh-title", title));
+    if (sub) t.append(sub);
+    head.append(t, b);
+    return head;
+  }
+  function syncAllStops() {
+    const n = [...document.querySelectorAll("#d-body [data-hidden]")].reduce((sum, x) => sum + (+x.dataset.hidden || 0), 0);
+    if (n) foldedCount = n;
+    document.querySelectorAll(".allstops").forEach((b) => {
+      b.hidden = !(n || allStops);                   // never disappears while switched on
+      b.setAttribute("aria-checked", String(allStops));
+      b.setAttribute("aria-label", allStops ? "All stops shown. Tap to show only your part of the line." : `Show all stops (${foldedCount} more)`);
+    });
+  }
+
+  function routeBox(t, mine, fb, tags, green) {
+    const box = el("div"); box.style.display = "grid"; box.style.gap = "10px";
+    const draw = () => {
+      const r = routeFor(t);
+      const stops = r.stops;
+      box.replaceChildren();
+      if (stops.length < 2) { box.append(el("p", "note", "No stop list for this train.")); return; }
+      const pos = trainPosition(stops, fb);
+      const idx = (name) => name ? stops.findIndex((s) => s.name === name) : -1;
+      const a = idx(mine[0]), b = idx(mine[1]);
+      const name = (i) => stops[i].name;
+
+      const ul = el("ol", "stops" + (green ? " green" : ""));
+      // "arr 07:36 · dep 07:38" (live times), with one delay tag for the stop.
+      const times = (s, first, last) => {
+        const tm = el("span", "tm");
+        const part = (label, planned, expected, delay) => {
+          if (planned == null) return;
+          const x = el("span");
+          if (delay > 0) { const c = delayEl(delay); c.title = `${delay} min late`; x.append(c); delayed = true; }
+          x.append(el("i", "lbl", label), el("b", "", hhmm(planned)));            // planned time; the tag says how late
+          tm.append(x);
+        };
+        if (!first) part("arr", s.arr, s.arrX, s.arrDelay);
+        if (!last) part("dep", s.dep, s.depX, s.depDelay);
+        return tm;
+      };
+      const posRow = (next) => {
+        const li = el("li", "pos");
+        const m = Math.max(0, Math.ceil((pos.at - now()) / 60));
+        const tx = el("span", "ptext", "Train ");
+        tx.append(el("span", "", `· ${name(next)} ${m <= 0 ? "now" : "in " + m + " min"}`));
+        li.append(el("span", "tr"), tx);
+        li.setAttribute("aria-label", `The train is here, ${name(next)} ${m <= 0 ? "now" : "in " + m + " minutes"}`);
+        return li;
+      };
+      let delayed = false;
+      // By default only your part of the line: from your station to where you get off (or the end of the line).
+      const lo = a >= 0 ? a : 0, hi = b >= 0 ? b : stops.length - 1;
+      const folds = !allStops && (lo > 0 || hi < stops.length - 1);
+      box.dataset.hidden = String(lo + (stops.length - 1 - hi));     // stops this list folds away
+      const where = () => pos.kind === "before" ? (pos.i === 0 && !r.full ? `not at ${name(0)} yet` : `not departed yet from ${name(pos.i)}`) : pos.kind === "at" ? `at ${name(pos.i)}` : `between ${name(pos.i)} and ${name(pos.next)}`;
+      const markerRow = (text) => {
+        const li = el("li", "pos ahead"), tx = el("span", "ptext", "Train ");
+        tx.append(el("span", "", "· " + text));
+        li.append(el("span", "tr"), tx);
+        li.setAttribute("aria-label", "Train position: " + text);
+        return li;
+      };
+      // Folded, and the train is still in the folded part before your stop: say where it is, above your stop.
+      if (folds && lo > 0) {
+        const before = (pos.kind === "between" && pos.next <= lo) || (pos.kind === "at" && pos.i < lo) || (pos.kind === "before" && pos.i < lo);
+        if (before) {
+          const k = lo - (pos.kind === "between" ? pos.next : pos.i);
+          ul.append(markerRow(`${k === 0 ? "next stop " + name(lo) : stopsText(k) + " before " + name(lo)} · ${where()}`));
+        }
+      }
+      // Unfolded (or nothing folded) and the train hasn't left its first station yet: marker above the line.
+      if (pos.kind === "before" && pos.i === 0 && (!folds || lo === 0)) ul.append(markerRow(where()));
+      stops.forEach((s, i) => {
+        if (folds && (i < lo || i > hi)) return;
+        const first = i === 0, last = i === stops.length - 1;
+        const past = pos.kind === "after" || i < pos.i || (pos.kind === "between" && i === pos.i);
+        const here = pos.kind === "at" && pos.i === i;
+        const trip = a >= 0 && b >= 0;
+        const cls = [first || last ? "end" : "", past ? "past" : "", here ? "here" : "", i === a || i === b ? "mine" : "",
+                     trip && i > a && i <= b ? "ju" : "", trip && i >= a && i < b ? "jl" : "",
+                     (a >= 0 && i < a) || (b >= 0 && i > b) ? "out" : ""];
+        const li = el("li", cls.filter(Boolean).join(" "));
+        const st = el("span", "st");
+        st.append(el("span", "n", s.name));
+        const sp = el("span", s.platform ? "sp" + (s.platformChanged ? " changed" : "") : "", s.platform || "");
+        if (s.platform) sp.title = "Platform " + s.platform;
+        li.append(el("span", here ? "tr" : first || last ? "pt term" : "pt"), st, times(s, first, last), sp);
+        li.setAttribute("aria-label", `${s.name}${!first && s.arr ? ", arrives " + hhmm(s.arrX ?? s.arr) : ""}${!last && s.dep ? ", departs " + hhmm(s.depX ?? s.dep) : ""}${s.platform ? ", platform " + s.platform : ""}${here ? ", the train is here" : past ? ", passed" : ""}${i === a ? ", " + tags[0] : ""}${i === b ? ", " + tags[1] : ""}`);
+        ul.append(li);
+        if (pos.kind === "between" && i === pos.i && !(folds && i === hi)) { const pr = posRow(pos.next); if (a >= 0 && b >= 0 && i >= a && i < b) pr.classList.add("ju", "jl"); ul.append(pr); }
+      });
+      // A small red sparkline of the delay at each stop along the shown part of the line.
+      const shown = folds ? stops.slice(lo, hi + 1) : stops;
+      const dl = shown.map((x) => Math.max(x.arrDelay || 0, x.depDelay || 0));
+      if (dl.some((d) => d > 0) && shown.length > 2) {
+        const mx = Math.max(...dl), W = 100, H = 20;
+        const pts = dl.map((d, i) => `${(i / (dl.length - 1) * W).toFixed(1)},${(H - (d / mx) * (H - 2) - 1).toFixed(1)}`).join(" ");
+        const sp = el("div", "spark");
+        sp.innerHTML = `<span>delay · max +${mx}′</span><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">` +
+          dl.map((_, i) => `<line x1="${(i / (dl.length - 1) * W).toFixed(1)}" x2="${(i / (dl.length - 1) * W).toFixed(1)}" y1="${H}" y2="${H - 3}" stroke="#4D4D4D" stroke-width="0.6" vector-effect="non-scaling-stroke"/>`).join("") +
+          `<polyline points="${pts}" fill="none" stroke="#F0382A" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg>`;
+        box.append(sp);
+      }
+      box.append(ul);
+      const notes = [];
+      if (r.loading) notes.push("Loading the whole line…");
+      else if (!r.full && r.why === "nokey") notes.push("Earlier stops and the train's position before it reaches this station need your Train Formation Service key (Settings).");
+      else if (!r.full) notes.push("Earlier stops aren't published for this train, so the list starts here.");
+      // (no note when only the timetable is available; the times shown already include the current delay)
+      for (const x of notes) box.append(el("p", "stops-key", x));
+    };
+    draw();
+    routeCells.push(draw);
+    return box;
+  }
+
+  function renderDetail() {
+    if (!state.detail) return;
+    const j = findRow(state.detail) || detailSnap; detailSnap = j;
+    const body = $("d-body"); body.replaceChildren(); detailCells.length = 0; routeCells.length = 0;
+    const rides = j.trip && j.legs ? j.legs.filter((l) => !l.walk) : [j];
+    // On a tracked trip with changes, the card shows the train you're on (or changing to), not the first one.
+    const ph0 = isSaved(j.key) && j.trip ? tripPhase(j) : null;
+    const cur = ph0 && ph0.kind !== "wait" && ph0.L && ph0.L.l ? ph0.L.l : (rides[0] || j);
+    // Banner: a photo of the (first) train, if its model is known.
+    let photo = null;
+    if (TT && TT.hasKey() && cur && cur.trainNo && cur.evu) {
+      const r = TT.lookup(cur);
+      if (r && r.state === "ok" && !r.info.unknown) photo = TT.PHOTOS[r.info.main] || null;
+    }
+    const banner = $("d-banner");
+    banner.hidden = !photo;
+    banner.style.setProperty("--photo", photo ? `url("${photo.src}")` : "none");
+    banner.setAttribute("role", "img");
+    banner.setAttribute("aria-label", photo ? "Photo of the train" : "");
+    $("detail").classList.toggle("has-banner", !!photo);
+    const inner = el("div", "inner"); inner.style.padding = "0";
+
+    // Hero: line, destination, the big time and the platform.
+    const hero = el("div", "hero" + (cur.livery ? " liv liv-" + cur.livery : ""));
+    const hl = el("div", "hline"); hl.append(badge(cur));
+    if (opLabel(cur)) hl.append(el("span", "op", opLabel(cur)));
+    const h2 = el("h2"); h2.id = "d-title";
+    h2.append("to " + (cur.to || j.to));
+    const fromName = j.trip ? (j.legs && j.legs[0] && j.legs[0].from ? j.legs[0].from.name : state.from && state.from.name) : (j.fromName || (state.from && state.from.name));
+    h2.append(el("small", "", j.trip ? `${fromName} → ${j.arrName}` : `from ${fromName || ""}`));
+    const w = el("div", "when"); fillWhen(w, j); detailCells.push([w, j]);
+    const st = el("div", "status");
+    function status() {
+      st.replaceChildren();
+      if (isGone(j)) { st.className = "status"; st.append(`Left ${hhmm(when(j))}` + (j.delay > 0 ? `, ${j.delay} min late` : "")); }
+      else if (j.delay > 0) { st.className = "status bad"; st.append(`Running ${j.delay} min late · expected ${hhmm(when(j))}`); }
+      else { st.className = "status good"; st.append("On time"); }
+      if (j.platformChanged) st.append(` · platform changed to ${j.platform}`);
+      if (j.dur) st.append(` · journey ${j.dur}`);
+    }
+    status(); detailCells.push([null, j, status]);
+    let p = platBox(j);
+    detailPhase = isSaved(j.key) ? phaseKey(j) : "";
+    const ph = isSaved(j.key) ? tripPhase(j) : null;
+    if (ph && ph.kind !== "wait") {
+      // On board: the countdown runs to the stop where you get off (or to your connection), with its platform.
+      detailCells.length = 0;
+      fillOnboard(w, j);
+      var heroProg = progressEl(j);
+      detailCells.push([null, j, () => { fillOnboard(w, j); heroProg[1](); }]);
+      p = platBox(phasePlat(ph));
+      // Say what the sign shows once you're under way: where you arrive, or where your connection leaves.
+      if (ph.kind === "ride" || ph.kind === "arrived" || ph.kind === "change") {
+        const cap = ph.kind === "change" ? "Next dep." : "Arrival";
+        p.classList.add("withcap"); p.append(el("small", "cap", cap));
+        p.title = (ph.kind === "change" ? "Your connection leaves from platform " : "You arrive on platform ") + (phasePlat(ph).platform || "not announced yet");
+      }
+      st.className = "status good"; st.replaceChildren(onboardText(ph, true));
+    }
+    hero.append(hl, h2, p, w, st);
+    if (ph && ph.kind !== "wait") hero.append(heroProg[0]);
+    const saved = isSaved(j.key);
+    if (saved || tripEnd(j) > now()) {
+      const ab = el("button", "addtrip" + (saved ? " on" : ""));
+      ab.append(el("span", "", saved ? "Tracking" : "Start tracking"), el("span", "arr", saved ? "×" : "→"));
+      ab.setAttribute("aria-label", saved ? "Tracking this trip in My trips. Tap to stop tracking." : "Start: keep track of this train in My trips");
+      ab.addEventListener("click", () => { toggleTrip(j); renderDetail(); });
+      hero.append(ab);
+    }
+    inner.append(hero);
+
+    // Trip: legs and changes.
+    if (j.trip && j.legs) {
+      const s = el("section", "sect"); {
+        // "52 min" large, then "06:56 → 07:45 · 1 change at Genève" (times include delays).
+        const sub = el("div", "sh-sub");
+        sub.append(el("b", "", hhmm(j.planned)));
+        if (j.delay > 0) sub.append(delayEl(j.delay));
+        sub.append(" → ", el("b", "", j.arr != null ? hhmm(j.arr) : "–"));
+        if (j.arrDelay > 0) sub.append(delayEl(j.arrDelay));
+        sub.append(" · " + j.changeText);
+        s.append(sectHead(j.dur || "Journey", sub));
+      }
+      let prevArr = null;
+      for (const l of j.legs) {
+        if (l.walk) {
+          const mins = l.arrive && l.from && l.arrive.arr && l.from.dep ? Math.round((l.arrive.arr - l.from.dep) / 60) : null;
+          s.append(el("div", "change", "Walk" + (l.arrive && l.arrive.name ? " to " + l.arrive.name : "") + (mins ? ` · ${mins} min` : "")));
+          continue;
+        }
+        if (prevArr && l.from) {
+          const mins = l.from.dep && prevArr.arr ? Math.round((l.from.dep - (prevArr.arrX ?? prevArr.arr)) / 60) : null;
+          const c = el("div", "change"); c.append("Change at ", el("b", "", l.from.name));
+          if (l.from.platform) c.append(` to platform ${l.from.platform}`);
+          if (mins != null) c.append(` · ${mins} min to change`);
+          s.append(c);
+        }
+        const h = el("div", "legh" + (l.livery ? " liv-" + l.livery : "")); h.append(badge(l), el("span", "", "towards " + l.to)); s.append(h);
+        if (!(l.stops && l.stops.length)) l.stops = [l.from, l.arrive].filter(Boolean);
+        s.append(routeBox(l, [l.from && l.from.name, l.arrive && l.arrive.name], (l.from && l.from.depDelay) || 0, ["Board", "Get off"], isSaved(j.key)));
+        prevArr = l.arrive;
+      }
+      inner.append(s);
+    }
+
+    // Route of this train (departure boards).
+    if (!j.trip && j.stops && j.stops.length > 1) {
+      const s = el("section", "sect"); {
+        const sub = el("div", "sh-sub");
+        sub.append(el("b", "", j.stops[0].name), " → ", el("b", "", j.stops[j.stops.length - 1].name));
+        if (j.dur) sub.append(" · " + j.dur);
+        s.append(sectHead("Stops", sub));
+      }
+      // A saved train from a plain departure board: your part of the line runs to the end of the line.
+      const saved = isSaved(j.key);
+      s.append(routeBox(j, saved ? [j.stops[0].name, j.stops[j.stops.length - 1].name] : [j.stops[0].name], j.delay || 0, ["Your station", "End of the line"], saved));
+      inner.append(s);
+    }
+
+    // The trains: one expandable row per train in the journey, with its type, photo and details.
+    const ts = el("section", "sect trains");
+    ts.append(el("h3", "", rides.length > 1 ? "Trains" : "The train"));
+    rides.forEach((t, idx) => {
+      const isLeg = !!(j.trip && t.from && t.arrive);
+      const det = el("details", "tdet");
+      det.open = openTrains.has(idx);
+      det.addEventListener("toggle", () => { if (det.open) openTrains.add(idx); else openTrains.delete(idx); });
+      const sum = el("summary");
+      const head = el("span", "tsum" + (t.livery ? " liv-" + t.livery : ""));
+      head.append(badge(t), el("span", "tsum-to", "towards " + t.to));
+      sum.append(head);
+      const model = modelName(t);
+      if (model) sum.append(el("span", "tsum-model", model));
+      det.append(sum);
+      const inside = el("div", "tdet-body");
+      inside.append(trainInfo(t, "", false));          // every train shows its own photo, the current one too
+      const comp = compositionBox(t, isLeg ? t.from.name : (j.fromName || (state.from && state.from.name)), isLeg ? t.from.platform : j.platform);
+      if (comp) inside.append(comp);
+      // Details of this train on your journey
+      const dl = el("dl", "kv trip-kv");
+      const add = (a, v) => { if (!v) return; const dd = el("dd"); dd.append(v); dl.append(el("dt", "", a), dd); };
+      // "22:00  Lausanne  [8]": time, station, a small platform sign; the delay tag next to the time.
+      const stopLine = (time, delay, name, plat, changed) => {
+        const f = document.createDocumentFragment();
+        f.append(el("b", "kt", hhmm(time)));
+        if (delay > 0) f.append(delayEl(delay));
+        f.append(el("span", "kn", name));
+        if (plat) { const sp = el("span", "sp" + (changed ? " changed" : ""), plat); sp.title = "Platform " + plat; f.append(sp); }
+        return f;
+      };
+      const from = isLeg ? t.from : { name: j.fromName || (state.from && state.from.name), dep: j.planned, depX: j.expected, depDelay: j.delay, platform: j.platform, platformChanged: j.platformChanged };
+      const last = isLeg ? t.arrive : (j.stops && j.stops.length > 1 ? j.stops[j.stops.length - 1] : null);
+      add("Date", fmtDay.format(new Date((from.dep ?? j.planned) * 1000)));
+      if (from.dep != null) add("Departure", stopLine(from.dep, from.depDelay, from.name, from.platform, from.platformChanged));
+      if (last && last.arr != null) add("Arrival", stopLine(last.arr, last.arrDelay, last.name, last.platform, last.platformChanged));
+      add("Train", [opLabel(t), t.trainNo ? "no. " + t.trainNo : ""].filter(Boolean).join(" · "));
+      inside.append(dl);
+      const credit = inside.querySelector(".credit");
+      if (credit) inside.append(credit);                // the photo credit goes last
+      det.append(inside);
+      ts.append(det);
+    });
+    inner.append(ts);
+
+    body.append(inner);
+    // number the blocks: 01 Train, 02 Line/Journey, 03 Trains
+    let num = 0;
+    for (const blk of inner.children) {
+      if (!blk.matches(".hero, .sect")) continue;
+      num++;
+      const lab = el("div", "lab blk-lab");
+      lab.append(el("b", "", String(num).padStart(2, "0")), blk.classList.contains("hero") ? "Train" : blk.classList.contains("trains") ? (rides.length > 1 ? "Trains" : "Train type") : (j.trip ? "Journey" : "Line"));
+      blk.prepend(lab);
+    }
+    setHeadline("d-headline", detailWord());
+    syncAllStops();
+  }
+
+  // ---------- Headline: the state in one word; a change slides up out of a clipped mask ----------
+  function setHeadline(id, word) {
+    const h = $(id); if (!h) return;
+    const cur = h.querySelector("span:not(.out)");
+    if (cur && cur.textContent === word) return;
+    if (cur) { cur.classList.remove("in"); cur.classList.add("out"); setTimeout(() => cur.remove(), 460); }
+    const n = el("span", "in", word); h.append(n);
+  }
+  function boardWord() {
+    if (!navigator.onLine) return "Offline.";
+    if (state.error) return "Failed.";
+    if (state.loading && !state.journeys.length) return "Loading.";
+    if (state.when) return "Planned.";
+    return isTrip() ? "Connections." : "Departures.";
+  }
+  function detailWord() {
+    if (!state.detail) return "";
+    const j = findRow(state.detail) || detailSnap; if (!j) return "";
+    if (isSaved(j.key)) {
+      const ph = tripPhase(j);
+      if (ph.kind === "ride") return "Travelling.";
+      if (ph.kind === "change") return "Changing.";
+      if (ph.kind === "arrived") return "Arrived.";
+    }
+    if (isGone(j)) return "Departed.";
+    const left = j.planned - now();
+    if (left <= 0 && j.delay > 0) return "Delayed.";
+    if (left < 120) return "Boarding.";
+    return isSaved(j.key) ? "Tracking." : "Waiting.";
+  }
+  let stripMsg = null, stripTimer = 0;
+  function renderUpdated() {
+    const u = $("updated");
+    if (state.loading && !state.loadedAt) u.textContent = "Loading…";
+    else if (state.loadedAt) {
+      const s = Math.round((Date.now() - state.loadedAt) / 1000);
+      u.textContent = "Updated " + (s < 5 ? "just now" : s < 60 ? s + " s ago" : Math.floor(s / 60) + " min ago");
+    }
+    $("clock").textContent = fmtClock.format(new Date());
+    const dot = $("live-dot");
+    if (dot) { dot.classList.toggle("busy", !!state.loading); dot.classList.toggle("err", !!state.error || !navigator.onLine); }
+    if (stripMsg) { u.className = "msg"; u.textContent = stripMsg; }
+    else if (state.error) { u.className = "err"; u.textContent = state.error; }
+    else u.className = "";
+    setHeadline("headline", boardWord());
+    if (state.detail) setHeadline("d-headline", detailWord());
+  }
+
+  // Every second: countdowns, clock and tab title, without rebuilding the list
+  // (unless a train has just left, which moves it above the "now" line).
+  function tick() {
+    renderUpdated();
+    let moved = false;
+    for (const c of timeCells) {
+      fillWhen(c[0], c[1]);
+      if (isGone(c[1]) !== c[3]) moved = true;
+      c[2].setAttribute("aria-label", c[4]());
+    }
+    if (moved) renderList();
+    let phaseMoved = false;
+    for (const c of menuCells) {
+      if (c[5]) c[5](c[0], c[1]); else if (!menu.hidden) fillWhen(c[0], c[1]);
+      if (c[6] !== phaseKey(c[1])) phaseMoved = true;
+    }
+    if (phaseMoved) renderTrips();
+    if (state.detail && isSaved(state.detail) && detailPhase !== phaseKey(findRow(state.detail) || {})) renderDetail();
+    watchDeparture();
+    for (const [cell, j, fn] of detailCells) { if (cell) fillWhen(cell, j); if (fn) fn(); }
+    if (state.detail && Math.floor(Date.now() / 1000) % 5 === 0) refreshRoutes();
+  }
+
+  // Play the departure animation on the top card when the train shown there leaves while the page is open.
+  let depSeen = null;                 // { key, ts }: the departure we're waiting for
+  function departureTs(j) {
+    if (isSaved(j.key) && j.trip) {   // tracked trip: the next train of the journey to leave
+      const legs = legsOf(j), n = now();
+      const next = legs.find((L) => (L.depX ?? L.dep) != null && (L.depX ?? L.dep) > n - 2);
+      return next ? (next.depX ?? next.dep) : null;
+    }
+    return when(j);
+  }
+  function watchDeparture() {
+    if (!state.detail) { depSeen = null; return; }
+    const j = findRow(state.detail) || detailSnap;
+    if (!j) return;
+    const ts = departureTs(j);
+    // We were waiting for a departure on this page and its time has now come: play it, once.
+    if (depSeen && depSeen.key === j.key && depSeen.ts != null && now() >= depSeen.ts && now() - depSeen.ts < 5) { celebrate(); return; }
+    // Otherwise remember the next departure still to come (it follows delays as they change).
+    if (ts != null && ts > now()) depSeen = { key: j.key, ts };
+    else if (!depSeen || depSeen.key !== j.key) depSeen = { key: j.key, ts: null };
+  }
+  function celebrate() {
+    const h = document.querySelector("#d-body .hero");
+    depSeen = { key: depSeen.key, ts: null };          // once per departure
+    if (!h) return;
+    h.classList.remove("departing"); void h.offsetWidth; h.classList.add("departing");
+    setTimeout(() => h.classList.remove("departing"), 3000);
+  }
+
+  function render() { renderModes(); renderList(); renderDetail(); renderUpdated(); syncInputs(); }
+
+  // ---------- Actions ----------
+  function bump(s) {
+    const f = state.freq[s.id] || { id: s.id, name: s.name, icon: s.icon || "", n: 0, t: 0 };
+    f.n += 1; f.t = Date.now(); f.name = s.name; if (s.icon) f.icon = s.icon;
+    state.freq[s.id] = f;
+  }
+  function setFrom(s) {
+    state.from = { id: s.id, name: s.name, icon: s.icon || "" };
+    if (state.to && state.to.id === s.id) state.to = null;
+    bump(s); newSearch();
+  }
+  function setTo(s) {
+    if (state.from && state.from.id === s.id) { toast("Pick a different station from the departure station."); syncInputs(); return; }
+    state.to = { id: s.id, name: s.name, icon: s.icon || "" };
+    bump(s); newSearch();
+  }
+  function newSearch() {
+    state.journeys = []; state.past = new Map(); state.pastAt = 0; state.error = null; state.extra = new Map();
+    state.limit = isTrip() ? 6 : 30; pinNow = true;
+    save(); loadBoard();
+  }
+  // ---------- Date and time ----------
+  const fmtParts = new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Zurich", hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  function zurichOffset(sec) {          // seconds Swiss time is ahead of UTC at that moment
+    const p = Object.fromEntries(fmtParts.formatToParts(new Date(sec * 1000)).map((x) => [x.type, x.value]));
+    return Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute, +p.second) / 1000 - sec;
+  }
+  const localInput = (sec) => { const d = new Date(sec * 1000); return fmtDate.format(d) + "T" + fmtTime.format(d); };
+  function syncWhen() {
+    $("when-text").textContent = state.when ? `${dayShort(state.when)} · ${hhmm(state.when)}` : "Now";
+    $("when-chip").classList.toggle("set", !!state.when);
+    $("when-clear").hidden = !state.when;
+    const inp = $("when-in");
+    inp.min = localInput(now()); inp.max = localInput(now() + 7 * 86400);
+    inp.value = localInput(state.when || now());
+  }
+  $("when-in").addEventListener("change", () => {
+    const v = $("when-in").value;                       // "2026-11-22T08:00", Swiss time
+    if (!v) return;
+    // Interpret it as Swiss time, whatever the phone's own time zone.
+    const guess = Date.parse(v + ":00Z") / 1000;
+    const offset = zurichOffset(guess);
+    let t = guess - offset;
+    if (t < now() + 120) t = null;                     // past or about now: just show now
+    else if (t > now() + 7 * 86400) { t = now() + 7 * 86400; toast("The timetable goes up to a week ahead."); }
+    state.when = t; syncWhen(); newSearch();
+  });
+  $("when-clear").addEventListener("click", () => { state.when = null; syncWhen(); newSearch(); });
+  syncWhen();
+
+  $("modes").addEventListener("click", (e) => {
+    const b = e.target.closest(".chip"); if (!b) return;
+    const m = b.dataset.mode;
+    state.modes = state.modes.includes(m) ? state.modes.filter((x) => x !== m) : [...state.modes, m];
+    if (!state.modes.length) state.modes = [m];
+    save(); renderModes(); newSearch();
+  });
+  $("swap").addEventListener("click", () => {
+    if (!isTrip()) return;
+    [state.from, state.to] = [state.to, state.from];
+    newSearch();
+  });
+  $("to-clear").addEventListener("click", () => { state.to = null; newSearch(); $("to-in").value = ""; });
+
+  // ---------- Station fields ----------
+  const ALIASES = [
+    { match: /cornavin/i, id: "8501008", name: "Genève", alias: "Cornavin" },
+    { match: /lausanne\s*gare|gare\s*de\s*lausanne/i, id: "8501120", name: "Lausanne", alias: "main station" },
+    { match: /bern\s*(hb|hbf|bahnhof)/i, id: "8507000", name: "Bern", alias: "main station" },
+    { match: /basel\s*(sbb|hb|hbf|bahnhof)/i, id: "8500010", name: "Basel SBB", alias: "main station" }
+  ];
+  function frequent() {
+    return Object.values(state.freq).sort((a, b) => b.n - a.n || b.t - a.t).slice(0, 4);
+  }
+  function syncInputs() {
+    const fi = $("from-in"), ti = $("to-in");
+    if (document.activeElement !== fi) fi.value = state.from ? state.from.name : "";
+    if (document.activeElement !== ti) ti.value = state.to ? state.to.name : "";
+    $("to-clear").hidden = !state.to;
+    $("swap").disabled = !isTrip();
+  }
+
+  function stationField(input, listEl, onPick) {
+    let results = [], heading = "", active = -1, timer = 0, seq = 0;
+    function show() {
+      listEl.replaceChildren();
+      if (results.length && heading) { const h = el("li", "head", heading); h.setAttribute("role", "presentation"); listEl.append(h); }
+      results.forEach((r, i) => {
+        const li = el("li"); li.setAttribute("role", "option"); li.id = listEl.id + "-" + i;
+        li.append(el("span", "", r.name + (r.alias ? " (" + r.alias + ")" : "")));
+        if (KIND[r.icon]) li.append(el("span", "kind " + r.icon, KIND[r.icon]));
+        li.setAttribute("aria-selected", String(i === active));
+        li.addEventListener("mousedown", (e) => { e.preventDefault(); choose(r); });
+        listEl.append(li);
+      });
+      listEl.hidden = !results.length;
+      input.setAttribute("aria-expanded", String(!!results.length));
+      if (active >= 0) input.setAttribute("aria-activedescendant", listEl.id + "-" + active); else input.removeAttribute("aria-activedescendant");
+    }
+    function showFrequent() {
+      results = frequent(); heading = results.length ? "Frequent stations" : ""; active = -1; show();
+    }
+    function close() { results = []; show(); }
+    function choose(r) { close(); input.blur(); onPick(r); }
+    input.addEventListener("focus", () => { input.select(); showFrequent(); });
+    input.addEventListener("click", () => { if (listEl.hidden) showFrequent(); });
+    input.addEventListener("input", () => {
+      clearTimeout(timer);
+      const q = input.value.trim();
+      if (q.length < 2) { showFrequent(); return; }
+      timer = setTimeout(async () => {
+        const my = ++seq;
+        try {
+          const data = await getJSON("/locations", [["query", q], ["type", "station"]]);
+          if (my !== seq) return;
+          let found = (data.stations || []).filter((s) => s.id && s.name).map((s) => ({ id: String(s.id), name: s.name, icon: s.icon || "" }));
+          for (const a of ALIASES) if (a.match.test(q) && !found.some((s) => s.id === a.id)) found.unshift({ id: a.id, name: a.name, icon: "train" });
+          for (const s of found) { const a = ALIASES.find((a) => a.id === s.id && a.match.test(q)); if (a) s.alias = a.alias; }
+          if (state.modes.includes("train")) found = found.filter((s) => s.icon === "train").concat(found.filter((s) => s.icon !== "train"));
+          results = found.slice(0, 8); heading = ""; active = results.length ? 0 : -1; show();
+        } catch { close(); }
+      }, 250);
+    });
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowDown" && results.length) { active = (active + 1) % results.length; show(); e.preventDefault(); }
+      else if (e.key === "ArrowUp" && results.length) { active = (active - 1 + results.length) % results.length; show(); e.preventDefault(); }
+      else if (e.key === "Enter" && active >= 0) { choose(results[active]); e.preventDefault(); }
+      else if (e.key === "Escape") { close(); input.blur(); }
+    });
+    input.addEventListener("blur", () => setTimeout(() => { close(); syncInputs(); }, 120));
+  }
+  stationField($("from-in"), $("from-list"), setFrom);
+  stationField($("to-in"), $("to-list"), setTo);
+
+  // ---------- Timers ----------
+  setInterval(() => { if (!document.hidden) loadBoard({ quiet: true }); }, REFRESH_MS);
+  setInterval(tick, 1000);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && state.loadedAt && Date.now() - state.loadedAt > REFRESH_MS) loadBoard({ quiet: true });
+  });
+
+  // ---------- My trips ----------
+  const menuCells = [];
+  let detailPhase = "";
+  // The rides of a saved trip, each from where you board to where you get off.
+  function legsOf(t) {
+    return withDelays(legsRaw(t));
+  }
+  // A train that leaves late is assumed to arrive late by as much, unless a later arrival is reported.
+  function withDelays(legs) {
+    for (const L of legs) {
+      if (L.arr == null) continue;
+      const known = L.arrX ?? L.arr;
+      const carried = L.depDelay > 0 ? L.arr + L.depDelay * 60 : L.arr;
+      if (carried > known) { L.arrX = carried; L.arrDelay = Math.round((carried - L.arr) / 60); }
+    }
+    return legs;
+  }
+  function liveStop(l, name) {
+    if (!l || !l.trainNo || !l.evu || !name) return null;
+    const r = liveRoutes.get(`${l.evu}|${l.date}|${l.trainNo}`);
+    return r && r.stops ? r.stops.find((s) => s.name === name) || null : null;
+  }
+  function legsRaw(t) {
+    if (t.trip && t.legs) {
+      const rides = t.legs.filter((l) => !l.walk && l.from && l.arrive).map((l) => ({ l, line: l.line, to: l.to,
+        from: l.from.name, fromId: l.from.id, dep: l.from.dep, depX: l.from.depX, depDelay: l.from.depDelay || 0, depPlat: l.from.platform, depPlatChanged: l.from.platformChanged,
+        place: l.arrive.name, arr: l.arrive.arr, arrX: l.arrive.arrX, arrDelay: l.arrive.arrDelay || 0, arrPlat: l.arrive.platform, arrPlatChanged: l.arrive.platformChanged }));
+      if (rides[0] && rides[0].depX == null) Object.assign(rides[0], { depX: t.expected, depDelay: t.delay || 0, depPlat: t.platform || rides[0].depPlat, depPlatChanged: t.platformChanged });
+      for (const R of rides) {
+        // The stop list on the train's page (live data for the whole line) is the most up to date.
+        const d = liveStop(R.l, R.from), a = liveStop(R.l, R.place);
+        if (d && d.depX != null) { R.depX = d.depX; R.depDelay = d.depDelay || 0; }
+        if (a && a.arrX != null) { R.arrX = a.arrX; R.arrDelay = a.arrDelay || 0; }
+      }
+      return rides;
+    }
+    const last = t.stops && t.stops.length > 1 ? t.stops[t.stops.length - 1] : null;
+    return [{ l: t, line: t.line, to: t.to, from: t.fromName, fromId: t.fromId, dep: t.planned, depX: t.expected, depDelay: t.delay || 0, depPlat: t.platform, depPlatChanged: t.platformChanged,
+      place: last ? last.name : t.to, arr: t.arr ?? (last && last.arr), arrX: t.arrX ?? (last && last.arrX), arrDelay: t.arrDelay || (last && last.arrDelay) || 0,
+      arrPlat: last ? last.platform : "", arrPlatChanged: last ? last.platformChanged : false }];
+  }
+  // Where you are on a saved trip: waiting to leave, on a train, changing trains, or arrived.
+  function tripPhase(t) {
+    const legs = legsOf(t), n = now();
+    for (let i = 0; i < legs.length; i++) {
+      const L = legs[i], dep = L.depX ?? L.dep, arr = L.arrX ?? L.arr;
+      // The first train counts as gone as soon as the countdown card would say "Departed" (its time and the live
+      // route's can differ by a minute), so the card always switches to the on-board view with the progress bar.
+      const gone = i === 0 && t.planned != null && isGone(t);
+      if (dep != null && n < dep + GONE_AFTER_S && !gone) return { kind: i === 0 ? "wait" : "change", i, L, legs };
+      if (arr != null && n < arr) return { kind: "ride", i, L, legs, next: legs[i + 1] || null };
+    }
+    return { kind: "arrived", i: legs.length - 1, L: legs[legs.length - 1], legs };
+  }
+  const phaseKey = (t) => { if (!t || t.planned == null) return ""; const ph = tripPhase(t); return ph.kind + ph.i; };
+  const phasePlat = (ph) => ph.kind === "change" ? { platform: ph.L.depPlat, platformChanged: ph.L.depPlatChanged } : { platform: ph.L.arrPlat, platformChanged: ph.L.arrPlatChanged };
+  const longCount = (ts) => ts - now() < 3600 ? countdown(ts) : untilText(ts);
+  function fillOnboard(cell, t) {
+    const ph = tripPhase(t), L = ph.L;
+    cell.replaceChildren();
+    if (ph.kind === "arrived") {
+      cell.append(el("span", "big gone", "Arrived"), el("span", "meta", `${L.place} · ${hhmm(L.arrX ?? L.arr)}`));
+      cell.dataset.label = `arrived at ${L.place}`;
+      return;
+    }
+    const ts = ph.kind === "change" ? L.depX ?? L.dep : L.arrX ?? L.arr;
+    const c = longCount(ts);
+    const meta = el("span", "meta", (ph.kind === "change" ? "dep. " + hhmm(L.dep) : "arr. " + hhmm(L.arr)));
+    const d = ph.kind === "change" ? L.depDelay : L.arrDelay;
+    if (d > 0) meta.append(delayEl(d));
+    cell.append(el("span", "big " + (c === "now" ? "now" : "countdown"), c), meta);
+    cell.dataset.label = ph.kind === "change" ? `connection leaves in ${c}` : `arriving at ${L.place} in ${c}`;
+  }
+  function onboardText(ph, long) {
+    const L = ph.L, span = el("span");
+    if (ph.kind === "arrived") { span.append(`Arrived at ${L.place}` + (L.arrPlat ? ` on platform ${L.arrPlat}` : "")); return span; }
+    if (ph.kind === "change") {
+      span.append(long ? `Change at ${L.from}: ` : "", el("b", "", L.line), ` towards ${L.to}` + (L.depPlat ? ` from platform ${L.depPlat}` : ""));
+      return span;
+    }
+    span.append(long ? `On board · arriving at ${L.place}` : `Arriving`, L.arrPlat ? " on platform " : "", L.arrPlat ? el("b", "", L.arrPlat) : "");
+    if (ph.next) {
+      const N = ph.next, ndep = N.depX ?? N.dep, mins = ndep && (L.arrX ?? L.arr) ? Math.round((ndep - (L.arrX ?? L.arr)) / 60) : null;
+      span.append(` · then `, el("b", "", N.line), N.depPlat ? ` from platform ` : "", N.depPlat ? el("b", "", N.depPlat) : "", ` at ${hhmm(ndep)}` + (mins != null ? ` (${mins} min to change)` : ""));
+    }
+    return span;
+  }
+  // Progress along the whole trip, with a notch where you change trains.
+  function progressEl(t) {
+    const legs0 = legsOf(t), first = legs0[0], last = legs0[legs0.length - 1];
+    const box = el("div", "progress"), bar = el("div", "bar"), fill = el("i"), pct = el("span", "pct");
+    bar.append(fill); box.append(pct);
+    const notches = legs0.slice(1).map(() => { const n = el("s"); bar.append(n); return n; });
+    const ends = el("div", "ends");
+    ends.append(el("span", "", first.from || ""), el("span", "", last.place || ""));
+    box.append(bar, ends);
+    box.setAttribute("role", "progressbar"); box.setAttribute("aria-label", "Trip progress");
+    // Times are read afresh each second, so delays that come in later move the bar (and the change notches).
+    const update = () => {
+      const legs = legsOf(t), a = legs[0], z = legs[legs.length - 1];
+      const start = a.depX ?? a.dep, end = z.arrX ?? z.arr;
+      const ok = start != null && end > start;
+      notches.forEach((n, i) => { const L = legs[i + 1]; n.style.left = ok && L ? (100 * (((L.depX ?? L.dep) - start) / (end - start))).toFixed(1) + "%" : "0"; });
+      const f = ok ? Math.min(1, Math.max(0, (now() - start) / (end - start))) : 0;
+      fill.style.width = (100 * f).toFixed(2) + "%";
+      const pv = String(Math.round(100 * f));
+      if (pct.dataset.v !== pv) {
+        const num = el("span", "", pv); rollDigits(num, (pct.dataset.v || "").padStart(pv.length, " "));
+        pct.replaceChildren(num, el("small", "", "%")); pct.dataset.v = pv;
+      }
+      box.setAttribute("aria-valuenow", String(Math.round(100 * f)));
+    };
+    update();
+    return [box, update];
+  }
+  function onboardCard(j, ph, cells) {
+    const leg = ph.L.l || j;
+    const r = el("div", "card" + (leg.livery ? " liv liv-" + leg.livery : "") + (ph.kind === "arrived" ? " gone" : ""));
+    r.dataset.key = j.key; r.tabIndex = 0; r.setAttribute("role", "button");
+    const head = el("div", "head");
+    head.append(badge(leg), el("span", "dest", ph.kind === "change" ? `Change at ${ph.L.from}` : ph.kind === "arrived" ? ph.L.place : `→ ${ph.L.place}`));
+    const w = el("div", "when"); fillOnboard(w, j);
+    const ti = el("div", "tripinfo wrap"); ti.append(onboardText(ph, false));
+    const [prog, updateProg] = progressEl(j);
+    r.append(head, w, ti, platBox(phasePlat(ph)), prog);
+    const label = () => `${leg.line}, ${w.dataset.label}${ph.L.arrPlat && ph.kind === "ride" ? ", arriving on platform " + ph.L.arrPlat : ""}. Show details.`;
+    r.setAttribute("aria-label", label());
+    cells.push([w, j, r, false, label, (cell, t) => { fillOnboard(cell, t); updateProg(); }, phaseKey(j)]);
+    const open = () => openDetail(j.key, r);
+    r.addEventListener("click", open);
+    r.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } });
+    return r;
+  }
+  const isSaved = (key) => state.trips.some((t) => t.key === key);
+  const tripEnd = (t) => Math.max(when(t) || 0, t.arrX ?? t.arr ?? 0);
+  function toggleTrip(j) {
+    if (isSaved(j.key)) state.trips = state.trips.filter((t) => t.key !== j.key);
+    else {
+      const t = JSON.parse(JSON.stringify(j));
+      t.fromName = j.fromName || (j.trip && j.legs && j.legs[0] && j.legs[0].from ? j.legs[0].from.name : state.from && state.from.name);
+      t.fromId = j.fromId || (state.from && state.from.id);
+      t.savedAt = Date.now();
+      delete t.legsVerified; delete t.legsChecking;
+      setTimeout(() => verifyLegs(t), 0);              // make sure every train in the saved trip is the right one
+      state.trips.push(t);
+    }
+    save(); renderTrips();
+  }
+  function cleanTrips() {
+    const before = state.trips.length;
+    state.trips = state.trips.filter((t) => tripEnd(t) > now() - 30 * 60);   // gone half an hour after arrival
+    if (state.trips.length !== before) save();
+  }
+  // The green number on the menu button: trips not finished yet (waiting, on board or changing).
+  function updateTripCount() {
+    const n = state.trips.filter((t) => tripPhase(t).kind !== "arrived").length;
+    $("trip-count").hidden = !n; $("trip-count").textContent = n;
+    $("menu-btn").setAttribute("aria-label", `Menu: my trips${n ? " (" + n + ")" : ""} and settings`);
+  }
+  setInterval(updateTripCount, 30000);
+  function renderTrips() {
+    cleanTrips();
+    updateTripCount();
+    const box = $("trips"); box.replaceChildren(); menuCells.length = 0;
+    if (!state.trips.length) { box.append(el("p", "none", "No trips yet. Open a train and tap START to keep track of it here.")); return; }
+    for (const t of [...state.trips].sort((a, b) => a.planned - b.planned)) {
+      const item = el("div", "trip-item");
+      const c = card(t, menuCells);
+      const meta = el("div", "trip-meta");
+      const day = fmtDate.format(new Date(t.planned * 1000)) === fmtDate.format(new Date()) ? "today" : fmtDay.format(new Date(t.planned * 1000));
+      meta.append(el("span", "", (t.trip ? `${t.fromName} → ${t.arrName}` : `from ${t.fromName || ""}`) + " · " + day));
+      const rm = el("button", "", "Stop tracking"); rm.setAttribute("aria-label", `Stop tracking ${t.line} to ${t.to}`);
+      rm.addEventListener("click", () => { toggleTrip(t); if (state.detail === t.key) renderDetail(); });
+      meta.append(rm);
+      item.append(c, meta);
+      box.append(item);
+    }
+  }
+  // Keep saved trains up to date: from the board when it shows them, else from their station's board.
+  const LIVE_FIELDS = ["expected", "delay", "platform", "platformChanged"];
+  async function refreshTrips() {
+    for (const t of state.trips) if (t.trip && !t.legsVerified) await verifyLegs(t);
+    let changed = false;
+    for (const t of state.trips) {
+      if (tripEnd(t) < now() - 30 * 60 || t.planned > now() + 6 * 3600) continue;
+      let live = state.journeys.find((r) => r.key === t.key) || state.past.get(t.key);
+      if (!live && t.fromId && t.trainNo) {
+        try {
+          const at = new Date((t.planned - 120) * 1000);
+          const data = await getJSON("/stationboard", [["id", t.fromId], ["datetime", fmtDate.format(at) + " " + fmtTime.format(at)], ["limit", "12"]]);
+          const hit = (data.stationboard || []).find((x) => String(parseInt(x.name, 10)) === t.trainNo);
+          if (hit) live = fromBoard(hit);
+        } catch {}
+      }
+      if (t.trip && t.legs) {
+        await refreshLegs(t); changed = true;
+        const f = t.legs.find((x) => !x.walk);
+        if (f && f.from && f.from.depX != null) Object.assign(t, { expected: f.from.depX, delay: f.from.depDelay || 0, platform: f.from.platform || t.platform, platformChanged: f.from.platformChanged });
+      }
+      if (!live) continue;
+      for (const f of LIVE_FIELDS) t[f] = live[f];
+      if (t.trip && t.legs) { const f = t.legs.find((x) => !x.walk); if (f && f.from) Object.assign(f.from, { depX: live.expected, depDelay: live.delay, platform: live.platform || f.from.platform, platformChanged: live.platformChanged }); }
+      if (!t.trip && live.stops) Object.assign(t, { stops: live.stops, arr: live.arr, arrX: live.arrX, arrDelay: live.arrDelay, dur: live.dur });
+      changed = true;
+    }
+    if (changed) { save(); renderTrips(); if (state.detail && isSaved(state.detail) && !state.journeys.some((r) => r.key === state.detail)) renderDetail(); }
+  }
+  // Each ride of a multi-train trip: its departure, platform and arrival at your stop, from the board where you board it.
+  // The trip search sometimes gives the wrong train number (e.g. a morning run of the same line), so a leg's
+  // train is found on the board where you board it by its planned departure time and line.
+  const sameTrain = (x, l) => x.stop && x.stop.departureTimestamp === l.from.dep && x.category === l.cat && String(x.number || "") === String(l.num || x.number || "");
+  async function boardEntry(l) {
+    const at = new Date((l.from.dep - 120) * 1000);
+    const data = await getJSON("/stationboard", [["id", l.from.id], ["datetime", fmtDate.format(at) + " " + fmtTime.format(at)], ["limit", "15"]]);
+    return (data.stationboard || []).find((x) => sameTrain(x, l)) || null;
+  }
+  // Fix the train numbers of a trip's legs (once), then redraw if the page shows this trip.
+  async function verifyLegs(j) {
+    if (!j || !j.trip || !j.legs || j.legsVerified || j.legsChecking) return;
+    j.legsChecking = true;
+    let changed = false, found = 0;
+    const rides = j.legs.filter((x) => !x.walk && x.from && x.from.id && x.from.dep);
+    for (const l of rides) {
+      try {
+        const hit = await boardEntry(l);
+        const nr = hit && /^\d+$/.test(String(hit.name || "")) ? String(parseInt(hit.name, 10)) : null;
+        if (nr) found++;
+        if (nr && nr !== l.trainNo) { l.trainNo = nr; changed = true; }
+      } catch {}
+    }
+    j.legsChecking = false;
+    if (found === rides.length) j.legsVerified = true;      // otherwise try again next time
+    const first = j.legs.find((x) => !x.walk);
+    if (first && first.trainNo !== j.trainNo) { j.trainNo = first.trainNo; changed = true; }
+    if (changed || j.legsVerified) { if (state.trips.includes(j)) { save(); renderTrips(); } if (state.detail === j.key) renderDetail(); }
+  }
+  async function refreshLegs(t) {
+    const rides = t.legs.filter((l) => !l.walk && l.from && l.arrive);
+    for (const l of rides) {
+      const dep = l.from.depX ?? l.from.dep, arr = l.arrive.arrX ?? l.arrive.arr;
+      if (!l.from.id || !l.from.dep || arr < now() - 300 || dep > now() + 3 * 3600) continue;
+      try {
+        const hit = await boardEntry(l);
+        if (!hit) continue;
+        if (/^\d+$/.test(String(hit.name || ""))) l.trainNo = String(parseInt(hit.name, 10));
+        const b = fromBoard(hit);
+        Object.assign(l.from, { depX: b.expected, depDelay: b.delay, platform: b.platform || l.from.platform, platformChanged: b.platformChanged });
+        const s = (b.stops || []).find((x) => x.name === l.arrive.name);
+        if (s) Object.assign(l.arrive, { arrX: s.arrX, arrDelay: s.arrDelay, platform: s.platform || l.arrive.platform, platformChanged: s.platformChanged || l.arrive.platformChanged });
+      } catch {}
+    }
+  }
+  setInterval(() => { if (!document.hidden && state.trips.length) refreshTrips(); }, 60000);
+
+  // ---------- Menu ----------
+  const menuBtn = $("menu-btn"), menu = $("menu");
+  menuBtn.addEventListener("click", () => {
+    menu.hidden = !menu.hidden; menuBtn.setAttribute("aria-expanded", String(!menu.hidden));
+    if (!menu.hidden) { renderTrips(); refreshTrips(); }
+    else closeSettings();
+  });
+
+  // ---------- Settings ----------
+  const gear = $("open-settings"), panel = $("settings"), keyIn = $("key"), keyStatus = $("key-status");
+  function showKeyStatus() {
+    if (!TT) { keyStatus.textContent = ""; return; }
+    keyStatus.className = "status " + (TT.authFailed() ? "bad" : TT.hasKey() ? "ok" : "");
+    keyStatus.textContent = TT.authFailed() ? "The formation service didn't accept this key. Check that it's the Train Formation Service key." : TT.hasKey() ? "Key saved. Tap a train to see its type and photo." : "No key saved yet.";
+  }
+  gear.addEventListener("click", () => {
+    panel.hidden = !panel.hidden; gear.setAttribute("aria-expanded", String(!panel.hidden));
+    if (!panel.hidden) { keyIn.value = TT ? TT.getKey() : ""; showKeyStatus(); }
+  });
+  let toastTimer = 0;
+  function toast(msg) {          // messages swap in place in the status strip
+    stripMsg = msg; clearTimeout(stripTimer); renderUpdated();
+    stripTimer = setTimeout(() => { stripMsg = null; renderUpdated(); }, 3200);
+  }
+
+  function closeSettings() { panel.hidden = true; gear.setAttribute("aria-expanded", "false"); }
+  function markGear() {
+    const bad = !!(TT && TT.authFailed());
+    gear.classList.toggle("alert", bad); menuBtn.classList.toggle("alert", bad);
+    $("settings-note").textContent = bad ? "Key not accepted" : TT && TT.hasKey() ? "Train types key saved" : "Add a train types key";
+  }
+  $("key-save").addEventListener("click", () => {
+    if (!TT || !keyIn.value.trim()) { keyStatus.className = "status bad"; keyStatus.textContent = "Paste your key first."; return; }
+    TT.setKey(keyIn.value); closeSettings(); markGear(); render(); toast("Key saved. Tap a train to see its type.");
+  });
+  $("key-clear").addEventListener("click", () => { if (TT) { TT.setKey(""); keyIn.value = ""; closeSettings(); markGear(); render(); toast("Key removed."); } });
+  if (TT) TT.onChange(() => { renderDetail(); markGear(); if (!panel.hidden) showKeyStatus(); });
+
+  // ---------- Background grid reacting to the pointer ----------
+  (() => {
+    const cols = [...document.querySelectorAll(".bg-grid i")], line = document.querySelector(".bg-cursor"), read = document.querySelector(".bg-readout");
+    if (!matchMedia("(pointer: fine)").matches) return;
+    let hot = null;
+    addEventListener("pointermove", (e) => {
+      line.style.left = e.clientX + "px";
+      read.textContent = `X ${String(Math.round(e.clientX)).padStart(4, "0")} Y ${String(Math.round(e.clientY)).padStart(4, "0")}`;
+      const c = cols.find((x) => { const r = x.getBoundingClientRect(); return e.clientX >= r.left && e.clientX <= r.right; }) || null;
+      if (c !== hot) { if (hot) hot.classList.remove("hot"); if (c) c.classList.add("hot"); hot = c; }
+    }, { passive: true });
+  })();
+  addEventListener("online", renderUpdated); addEventListener("offline", renderUpdated);
+
+  state.limit = isTrip() ? 6 : 30;
+  save();
+  render();
+  renderTrips(); markGear();
+  loadBoard();
+  if (state.trips.length) refreshTrips();
+})();
+</script>
+</body>
+</html>
