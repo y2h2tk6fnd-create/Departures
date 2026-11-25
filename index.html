@@ -485,7 +485,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 /* Rolling countdown digits */
 .big .ch { display: inline-block; }
 @media (prefers-reduced-motion: no-preference) { .big .ch.roll { animation: tick .32s cubic-bezier(.16, 1, .3, 1) both; } }
-@keyframes tick { from { transform: translateY(-60%); opacity: 0; filter: blur(2px); } }
+@keyframes tick { from { transform: translateY(60%); opacity: 0; filter: blur(2px); } }   /* new digit rises from below */
 /* Transport filter, in the menu */
 .menu-filter { display: grid; gap: 8px; border-top: 1px solid var(--line); padding-top: 12px; }
 .menu-lab { font-weight: 600; font-size: 15.5px; }
@@ -912,7 +912,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     cell.append(big, meta);
     cell.dataset.label = label;
   }
-  // Countdown digits roll: each character that changed since the last second ticks in from above.
+  // Countdown digits roll: each character that changed since the last second rolls up from below.
   function rollDigits(big, prev) {
     const txt = big.textContent;
     if (!prev || prev.length !== txt.length || !/\d/.test(txt)) return;
