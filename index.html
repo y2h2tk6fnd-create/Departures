@@ -1254,6 +1254,8 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     for (let i = 0; i < stops.length; i++) {
       const [a, d] = stopTimes(stops[i], fb);
       if (a == null) continue;
+      // Shortly before it sets off, the train is shown waiting at its first station (an estimate: 10 minutes).
+      if (n < a && prev == null && i === 0 && a - n <= 600) return { kind: "at", i, until: d };
       if (n < a) return prev == null ? { kind: "before", i } : { kind: "between", i: prev, next: i, at: a };
       if (i < stops.length - 1 && n <= d) return { kind: "at", i, until: d };
       prev = i;
@@ -1313,7 +1315,10 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 
       const ul = el("ol", "stops" + (green ? " green" : ""));
       // "arr 07:36 · dep 07:38" (live times), with one delay tag for the stop.
-      const times = (s, first, last) => {
+      const times = (s, first, last, i) => {
+        // Folded: your boarding station shows its departure, your destination its arrival. With All stops, both times.
+        if (!allStops && i === a) first = true;
+        if (!allStops && b >= 0 && i === b) last = true;
         const tm = el("span", "tm");
         const part = (label, planned, expected, delay) => {
           if (planned == null) return;
@@ -1364,7 +1369,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
         st.append(el("span", "n", s.name));
         const sp = el("span", s.platform ? "sp" + (s.platformChanged ? " changed" : "") : "", s.platform || "");
         if (s.platform) sp.title = "Platform " + s.platform;
-        li.append(el("span", here ? "tr" : first || last ? "pt term" : "pt"), st, times(s, first, last), sp);
+        li.append(el("span", here ? "tr" : first || last ? "pt term" : "pt"), st, times(s, first, last, i), sp);
         li.setAttribute("aria-label", `${s.name}${!first && s.arr ? ", arrives " + hhmm(s.arrX ?? s.arr) : ""}${!last && s.dep ? ", departs " + hhmm(s.depX ?? s.dep) : ""}${s.platform ? ", platform " + s.platform : ""}${here ? ", the train is here" : past ? ", passed" : ""}${i === a ? ", " + tags[0] : ""}${i === b ? ", " + tags[1] : ""}`);
         ul.append(li);
         if (pos.kind === "between" && i === pos.i && !(folds && i === hi)) { const pr = posRow(pos.next); if (a >= 0 && b >= 0 && i >= a && i < b) pr.classList.add("ju", "jl"); ul.append(pr); }
