@@ -484,14 +484,15 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 }
 /* Rolling countdown digits */
 .big .ch { display: inline-block; position: relative; }
+.big .ch.roll { overflow: hidden; vertical-align: bottom; }      /* clipped: digits move within their own slot, nothing shows outside it */
 .big .ch .out { position: absolute; left: 0; top: 0; visibility: hidden; }
 .big .ch .in { display: inline-block; }
 @media (prefers-reduced-motion: no-preference) {
   .big .ch.roll .in { animation: tick-in .34s cubic-bezier(.16, 1, .3, 1) both; }
   .big .ch.roll .out { visibility: visible; animation: tick-out .34s cubic-bezier(.16, 1, .3, 1) both; }
 }
-@keyframes tick-in { from { transform: translateY(60%); opacity: 0; filter: blur(2px); } }    /* new digit rises from below */
-@keyframes tick-out { to { transform: translateY(-60%); opacity: 0; filter: blur(2px); } }    /* old digit leaves upwards */
+@keyframes tick-in { from { transform: translateY(100%); } }      /* new digit rises in from below */
+@keyframes tick-out { to { transform: translateY(-100%); } }      /* old digit rolls up out of the slot */
 /* Transport filter, in the menu */
 .menu-filter { display: grid; gap: 8px; border-top: 1px solid var(--line); padding-top: 12px; }
 .menu-lab { font-weight: 600; font-size: 15.5px; }
