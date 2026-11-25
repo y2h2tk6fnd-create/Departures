@@ -483,9 +483,15 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
   .card { transition: border-color .15s; }
 }
 /* Rolling countdown digits */
-.big .ch { display: inline-block; }
-@media (prefers-reduced-motion: no-preference) { .big .ch.roll { animation: tick .32s cubic-bezier(.16, 1, .3, 1) both; } }
-@keyframes tick { from { transform: translateY(60%); opacity: 0; filter: blur(2px); } }   /* new digit rises from below */
+.big .ch { display: inline-block; position: relative; }
+.big .ch .out { position: absolute; left: 0; top: 0; visibility: hidden; }
+.big .ch .in { display: inline-block; }
+@media (prefers-reduced-motion: no-preference) {
+  .big .ch.roll .in { animation: tick-in .34s cubic-bezier(.16, 1, .3, 1) both; }
+  .big .ch.roll .out { visibility: visible; animation: tick-out .34s cubic-bezier(.16, 1, .3, 1) both; }
+}
+@keyframes tick-in { from { transform: translateY(60%); opacity: 0; filter: blur(2px); } }    /* new digit rises from below */
+@keyframes tick-out { to { transform: translateY(-60%); opacity: 0; filter: blur(2px); } }    /* old digit leaves upwards */
 /* Transport filter, in the menu */
 .menu-filter { display: grid; gap: 8px; border-top: 1px solid var(--line); padding-top: 12px; }
 .menu-lab { font-weight: 600; font-size: 15.5px; }
@@ -907,17 +913,24 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
       label = `departs ${hhmm(j.planned)}`;
     }
     if (chip) { meta.append(delayEl(j.delay)); label += `, ${j.delay} minutes late`; }
-    rollDigits(big, cell.dataset.prev || "");
-    cell.dataset.prev = big.textContent;
+    cell.dataset.prev = rollDigits(big, cell.dataset.prev || "");     // remembers the shown text (without the outgoing digits)
     cell.append(big, meta);
     cell.dataset.label = label;
   }
   // Countdown digits roll: each character that changed since the last second rolls up from below.
   function rollDigits(big, prev) {
     const txt = big.textContent;
-    if (!prev || prev.length !== txt.length || !/\d/.test(txt)) return;
+    if (!prev || prev.length !== txt.length || !/\d/.test(txt)) return txt;
     big.textContent = "";
-    [...txt].forEach((c, i) => big.append(el("span", "ch" + (c !== prev[i] ? " roll" : ""), c)));
+    [...txt].forEach((c, i) => {
+      if (c === prev[i]) { big.append(el("span", "ch", c)); return; }
+      // the old digit rolls up and fades out while the new one rises in from below
+      const ch = el("span", "ch roll");
+      const out = el("span", "out", prev[i]); out.setAttribute("aria-hidden", "true");
+      ch.append(el("span", "in", c), out);
+      big.append(ch);
+    });
+    return txt;
   }
   function platBox(j) {
     const p = el("span", "plat" + (j.platformChanged ? " changed" : "") + (j.platform ? "" : " unknown"));
