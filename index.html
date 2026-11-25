@@ -1348,16 +1348,8 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
         li.setAttribute("aria-label", "Train position: " + text);
         return li;
       };
-      // Folded, and the train is still in the folded part before your stop: say where it is, above your stop.
-      if (folds && lo > 0) {
-        const before = (pos.kind === "between" && pos.next <= lo) || (pos.kind === "at" && pos.i < lo) || (pos.kind === "before" && pos.i < lo);
-        if (before) {
-          const k = lo - (pos.kind === "between" ? pos.next : pos.i);
-          ul.append(markerRow(`${k === 0 ? "next stop " + name(lo) : stopsText(k) + " before " + name(lo)} · ${where()}`));
-        }
-      }
-      // Unfolded (or nothing folded) and the train hasn't left its first station yet: marker above the line.
-      if (pos.kind === "before" && pos.i === 0 && (!folds || lo === 0)) ul.append(markerRow(where()));
+      // The train's position is only marked on stops that are shown: outside your part of the line it appears
+      // in the All stops view; before the train has set off there is no marker.
       stops.forEach((s, i) => {
         if (folds && (i < lo || i > hi)) return;
         const first = i === 0, last = i === stops.length - 1;
