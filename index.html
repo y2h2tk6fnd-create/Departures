@@ -1215,7 +1215,9 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
   // has it, and the line is put in order by time.
   function mergeLine(own, live, plan) {
     const byName = new Map();
-    for (const list of [plan, live, own]) for (const s of list) if (s && s.name) byName.set(s.name, { ...(byName.get(s.name) || {}), ...s });
+    // A missing value (e.g. no arrival time at the station a list starts from) never overwrites a known one.
+    const filled = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v != null && v !== ""));
+    for (const list of [plan, live, own]) for (const s of list) if (s && s.name) byName.set(s.name, { ...(byName.get(s.name) || {}), ...filled(s) });
     const t = (s) => s.dep ?? s.arr ?? Infinity;
     return [...byName.values()].sort((a, b) => t(a) - t(b));
   }
