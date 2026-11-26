@@ -923,7 +923,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     }
     if (chip) { meta.append(delayEl(j.delay)); label += `, ${j.delay} minutes late`; }
     if (oldBig && oldBig.className === big.className && cell.dataset.prev === big.textContent) big = oldBig;
-    else cell.dataset.prev = rollDigits(big, cell.dataset.prev || "");     // remembers the shown text (without the outgoing digits)
+    else cell.dataset.prev = rollDigits(big, cell.dataset.prev || "", j.key);     // remembers the shown text (without the outgoing digits)
     if (delayed) {
       // The red delay badge encloses the countdown and the "Delayed" label.
       const box = el("span", "dlbox"), bg = el("span", "dlbg");
@@ -947,16 +947,26 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     cell.dataset.label = label;
   }
   // Countdown digits roll: each character that changed since the last second rolls up from below.
-  function rollDigits(big, prev) {
-    const txt = big.textContent;
+  // A refresh can rebuild a card while a digit is mid-roll; the new card then picks the roll up where it was.
+  const ROLL_MS = 340, rolls = new Map();         // train key → { from, to, at } of its latest roll
+  function rollDigits(big, prev, key) {
+    const txt = big.textContent, t = performance.now();
+    let lag = 0;
+    if (!prev && key) {
+      const r = rolls.get(key);
+      if (r && r.to === txt && t - r.at < ROLL_MS) { prev = r.from; lag = t - r.at; }
+    }
     if (!prev || prev.length !== txt.length || !/\d/.test(txt)) return txt;
+    if (key && !lag && prev !== txt) rolls.set(key, { from: prev, to: txt, at: t });
     big.textContent = "";
     [...txt].forEach((c, i) => {
       if (c === prev[i]) { big.append(el("span", "ch", c)); return; }
       // the old digit rolls up and fades out while the new one rises in from below
       const ch = el("span", "ch roll");
       const out = el("span", "out", prev[i]); out.setAttribute("aria-hidden", "true");
-      ch.append(el("span", "in", c), out);
+      const inn = el("span", "in", c);
+      if (lag) for (const x of [inn, out]) x.style.animationDelay = -Math.round(lag) + "ms";
+      ch.append(inn, out);
       big.append(ch);
     });
     return txt;
