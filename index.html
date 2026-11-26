@@ -898,6 +898,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     const oldChip = cell.querySelector(".meta .delay");                 // the small "+7′" badge, if it was showing
     const from = oldChip && cell.isConnected ? oldChip.getBoundingClientRect() : null;
     const wasDelayed = cell.dataset.mode === "delayed";
+    const oldBig = cell.querySelector(".big");                       // kept if nothing changed, so a roll in progress isn't cut short
     cell.replaceChildren();
     let big, meta, label, chip = j.delay > 0, delayed = false;
     if (isGone(j)) {
@@ -921,7 +922,8 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
       label = `departs ${hhmm(j.planned)}`;
     }
     if (chip) { meta.append(delayEl(j.delay)); label += `, ${j.delay} minutes late`; }
-    cell.dataset.prev = rollDigits(big, cell.dataset.prev || "");     // remembers the shown text (without the outgoing digits)
+    if (oldBig && oldBig.className === big.className && cell.dataset.prev === big.textContent) big = oldBig;
+    else cell.dataset.prev = rollDigits(big, cell.dataset.prev || "");     // remembers the shown text (without the outgoing digits)
     if (delayed) {
       // The red delay badge encloses the countdown and the "Delayed" label.
       const box = el("span", "dlbox"), bg = el("span", "dlbg");
@@ -1795,7 +1797,9 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
 
   // ---------- Timers ----------
   setInterval(() => { if (!document.hidden) loadBoard({ quiet: true }); }, REFRESH_MS);
-  setInterval(tick, 1000);
+  // Tick just after each whole second, so every countdown shows each second exactly once
+  // (a free-running 1 s timer drifts, and would now and then show a second twice and skip the next).
+  (function everySecond() { setTimeout(() => { tick(); everySecond(); }, 1030 - (Date.now() % 1000)); })();
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden && state.loadedAt && Date.now() - state.loadedAt > REFRESH_MS) loadBoard({ quiet: true });
   });
