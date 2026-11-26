@@ -884,7 +884,9 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     return Math.floor(m / 60) + " h " + String(m % 60).padStart(2, "0");
   }
   function countdown(ts) {        // minutes and seconds, e.g. 12′05″
-    const s = Math.max(0, Math.round(ts - now()));
+    // Whole seconds still to go (rounded up): a card drawn at any moment within a second shows the same
+    // number as the tick at its start, so the next number always arrives with the tick, rolling.
+    const s = Math.max(0, Math.ceil(ts - now() - 0.001));
     return s === 0 ? "now" : Math.floor(s / 60) + "′" + String(s % 60).padStart(2, "0") + "″";
   }
   const delayEl = (d) => el("span", "delay", "+" + d + "′");
@@ -922,8 +924,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
       label = `departs ${hhmm(j.planned)}`;
     }
     if (chip) { meta.append(delayEl(j.delay)); label += `, ${j.delay} minutes late`; }
-    if (oldBig && oldBig.className === big.className && cell.dataset.prev === big.textContent) big = oldBig;
-    else cell.dataset.prev = rollDigits(big, cell.dataset.prev || "", j.key);     // remembers the shown text (without the outgoing digits)
+    big = putBig(cell, oldBig, big, j.key);     // remembers the shown text (without the outgoing digits)
     if (delayed) {
       // The red delay badge encloses the countdown and the "Delayed" label.
       const box = el("span", "dlbox"), bg = el("span", "dlbg");
@@ -946,18 +947,37 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     cell.dataset.mode = delayed ? "delayed" : "";
     cell.dataset.label = label;
   }
-  // Countdown digits roll: each character that changed since the last second rolls up from below.
-  // A refresh can rebuild a card while a digit is mid-roll; the new card then picks the roll up where it was.
-  const ROLL_MS = 340, rolls = new Map();         // train key → { from, to, at } of its latest roll
-  function rollDigits(big, prev, key) {
-    const txt = big.textContent, t = performance.now();
-    let lag = 0;
-    if (!prev && key) {
-      const r = rolls.get(key);
-      if (r && r.to === txt && t - r.at < ROLL_MS) { prev = r.from; lag = t - r.at; }
+  // The big number for a cell: the same element if nothing changed (a roll in progress isn't cut short),
+  // otherwise the new one, with the digits that changed rolling.
+  // Each train remembers what it last showed, so a card rebuilt by a refresh (or a new time from the
+  // refresh itself) still rolls from the number that was on screen, or carries on a roll in progress.
+  const ROLL_MS = 340, shown = new Map();         // key → { txt, at, from, rollAt }
+  function putBig(cell, oldBig, big, key) {
+    const t = performance.now(), txt = big.textContent;
+    if (oldBig && oldBig.className === big.className && cell.dataset.prev === txt) {
+      const r = shown.get(key); if (r && r.txt === txt) r.at = t;
+      return oldBig;
     }
-    if (!prev || prev.length !== txt.length || !/\d/.test(txt)) return txt;
-    if (key && !lag && prev !== txt) rolls.set(key, { from: prev, to: txt, at: t });
+    let prev = cell.dataset.prev || "", lag = 0;
+    const r = key && shown.get(key);
+    if (!prev && r && t - r.at < 1500) {
+      if (r.txt !== txt) prev = r.txt;                                              // the number changed as the card was rebuilt
+      else if (r.from && t - r.rollAt < ROLL_MS) { prev = r.from; lag = t - r.rollAt; }   // rebuilt mid-roll
+    }
+    const rolled = rollDigits(big, prev, lag);
+    cell.dataset.prev = txt;
+    if (key) shown.set(key, rolled && !lag ? { txt, at: t, from: rolled, rollAt: t } : { ...(r && r.txt === txt ? r : {}), txt, at: t });
+    return big;
+  }
+  // Countdown digits roll: each character that changed rolls up and out while the new one rises from below.
+  // Returns the (aligned) previous text if it rolled, otherwise "".
+  function rollDigits(big, prev, lag) {
+    const txt = big.textContent;
+    if (!prev || prev === txt || !/\d/.test(txt) || !/\d/.test(prev) || Math.abs(prev.length - txt.length) > 2) return "";
+    // Line the two up from the right (10′00″ → 9′59″): a new leading digit rolls in from empty.
+    prev = prev.length < txt.length ? prev.padStart(txt.length, " ") : prev.slice(prev.length - txt.length);
+    // Only between numbers of the same form (12′05″ → 12′04″), not e.g. a clock time turning into a countdown.
+    if ([...txt].some((c, i) => !/\d/.test(c) && c !== prev[i]) || [...prev].some((c, i) => !/[\d ]/.test(c) && c !== txt[i])) return "";
     big.textContent = "";
     [...txt].forEach((c, i) => {
       if (c === prev[i]) { big.append(el("span", "ch", c)); return; }
@@ -969,7 +989,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
       ch.append(inn, out);
       big.append(ch);
     });
-    return txt;
+    return prev;
   }
   function platBox(j) {
     const p = el("span", "plat" + (j.platformChanged ? " changed" : "") + (j.platform ? "" : " unknown"));
@@ -1873,6 +1893,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
   const longCount = (ts) => ts - now() < 3600 ? countdown(ts) : untilText(ts);
   function fillOnboard(cell, t) {
     const ph = tripPhase(t), L = ph.L;
+    const oldBig = cell.querySelector(".big");
     cell.replaceChildren();
     if (ph.kind === "arrived") {
       cell.append(el("span", "big gone", "Arrived"), el("span", "meta", `${L.place} · ${hhmm(L.arrX ?? L.arr)}`));
@@ -1884,7 +1905,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     const meta = el("span", "meta", (ph.kind === "change" ? "dep. " + hhmm(L.dep) : "arr. " + hhmm(L.arr)));
     const d = ph.kind === "change" ? L.depDelay : L.arrDelay;
     if (d > 0) meta.append(delayEl(d));
-    cell.append(el("span", "big " + (c === "now" ? "now" : "countdown"), c), meta);
+    cell.append(putBig(cell, oldBig, el("span", "big " + (c === "now" ? "now" : "countdown"), c), t.key + ":" + ph.kind + ph.i), meta);
     cell.dataset.label = ph.kind === "change" ? `connection leaves in ${c}` : `arriving at ${L.place} in ${c}`;
   }
   function onboardText(ph, long) {
