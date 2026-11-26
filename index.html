@@ -1305,6 +1305,19 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
     const box = el("div"); box.style.display = "grid"; box.style.gap = "10px";
     const draw = () => {
       const r = routeFor(t);
+      // If the trip knows a later arrival at your stop than this list (a delay that grew since the list was
+      // loaded), carry the difference onto the stops from your boarding station on, so the position stays right.
+      const destArr = t.arrive && (t.arrive.arrX ?? null);
+      if (destArr && t.arrive.name && r.stops.length) {
+        const di = r.stops.findIndex((x) => x.name === t.arrive.name), bi = t.from ? r.stops.findIndex((x) => x.name === t.from.name) : 0;
+        const listArr = di >= 0 ? (r.stops[di].arrX ?? r.stops[di].arr) : null;
+        const gap = listArr != null ? destArr - listArr : 0;
+        const stillAhead = (x) => (x.arrX ?? x.arr ?? x.depX ?? x.dep) + gap > now();   // stops long passed keep their own times
+        if (gap >= 60) r.stops = r.stops.map((x, k) => k <= Math.max(bi, 0) || k > di || (k < di && !stillAhead(x)) ? x : {
+          ...x, arrX: x.arr != null ? (x.arrX ?? x.arr) + gap : null, depX: x.dep != null && k < di ? (x.depX ?? x.dep) + gap : x.depX,
+          arrDelay: x.arr != null ? Math.round(((x.arrX ?? x.arr) + gap - x.arr) / 60) : 0,
+          depDelay: x.dep != null && k < di ? Math.round(((x.depX ?? x.dep) + gap - x.dep) / 60) : x.depDelay });
+      }
       const stops = r.stops;
       box.replaceChildren();
       if (stops.length < 2) { box.append(el("p", "note", "No stop list for this train.")); return; }
@@ -2003,6 +2016,7 @@ h1 { font: 700 26px/1.1 var(--font-display); margin: 0; letter-spacing: .01em; }
         Object.assign(l.from, { depX: b.expected, depDelay: b.delay, platform: b.platform || l.from.platform, platformChanged: b.platformChanged });
         const s = (b.stops || []).find((x) => x.name === l.arrive.name);
         if (s) Object.assign(l.arrive, { arrX: s.arrX, arrDelay: s.arrDelay, platform: s.platform || l.arrive.platform, platformChanged: s.platformChanged || l.arrive.platformChanged });
+        if (b.stops && b.stops.length > 1) l.stops = b.stops;          // the stops along the way, with the current delays
       } catch {}
     }
   }
